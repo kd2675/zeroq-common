@@ -1,1 +1,3 @@
 rootProject.name = 'zeroq-common'
+include 'zeroq-common-core'
+include 'zeroq-back-service'
