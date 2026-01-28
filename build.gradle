@@ -1,6 +1,6 @@
 plugins {
 	id 'java'
-	id 'org.springframework.boot' version '4.0.1'
+	id 'org.springframework.boot' version '4.0.2'
 	id 'io.spring.dependency-management' version '1.1.7'
 }
 
@@ -75,5 +75,11 @@ project(':zeroq-back-service') {
 		implementation project(':zeroq-common-core')
 //        implementation project(':common-database')
 //        implementation project(':common-log')
+	}
+}
+
+project(':zeroq-back-sensor') {
+	dependencies {
+		implementation project(':zeroq-common-core')
 	}
 }
