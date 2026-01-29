@@ -38,3 +38,4 @@ out/
 
 # Project exclude paths
 /logs/
+AGENTS*

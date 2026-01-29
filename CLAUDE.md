@@ -5,8 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 ZeroQ is a full-stack application with a multi-module architecture:
-- **zeroq-common-core**: Shared Java library with common utilities, response/error handling, and base infrastructure (Spring Boot 4.0.1, Java 21)
-- **zeroq-back-service**: Spring Boot REST API backend that depends on zeroq-common-core
+- **web-common-core**: Shared Java library with common utilities, response/error handling, and base infrastructure (Spring Boot 4.0.1, Java 21)
+- **zeroq-back-service**: Spring Boot REST API backend that depends on web-common-core
 - **zeroq-front-admin**: Next.js admin interface (React 19, TypeScript, Tailwind CSS)
 - **zeroq-front-service**: Next.js customer-facing service (React 19, TypeScript, Tailwind CSS)
 
@@ -139,7 +139,7 @@ GET    /api/v1/{domain}/page         Get paginated list
 - Entity/Repository scan paths
 - Master-Slave routing configuration
 
-**zeroq-common-core** (Dependency) - Shared Utilities
+**web-common-core** (Dependency) - Shared Utilities
 - `ResponseDTO`, `ResponseDataDTO`, `ResponseErrorDTO`
 - Utility classes (DateUtils, UuidUtils, HttpUtils, etc.)
 - `GeneralException` base class
@@ -165,7 +165,7 @@ GET    /api/v1/{domain}/page         Get paginated list
 
 # Run tests for a specific module
 ./gradlew zeroq-back-service:test
-./gradlew zeroq-common-core:test
+./gradlew web-common-core:test
 
 # Run a single test
 ./gradlew zeroq-back-service:test --tests com.zeroq.back.SomeTest

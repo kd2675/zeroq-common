@@ -96,7 +96,7 @@ npm run dev
 
 ---
 
-### 🟣 **zeroq-common-core** - Shared Library
+### 🟣 **web-common-core** - Shared Library
 Shared utilities and base classes:
 - Common DTOs (ResponseDTO, ResponseDataDTO)
 - Utility functions (DateUtils, UuidUtils, HttpUtils)
@@ -166,7 +166,7 @@ zeroq-common/
 │   ├── README.md                 # Backend API documentation
 │   └── build.gradle
 │
-├── zeroq-common-core/            # Shared library
+├── web-common-core/            # Shared library
 │   ├── src/main/java/com/zeroq/core/
 │   │   ├── response/             # Common response DTOs
 │   │   ├── utils/                # Utility classes

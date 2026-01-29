@@ -60,7 +60,7 @@ jar {
 	enabled = true
 }
 
-project(':zeroq-common-core') {
+project(':web-common-core') {
 	// 공통 코드
 
 	bootJar { enabled = false } // core 은 bootJar 로 패키징 할 필요 없음
@@ -72,7 +72,7 @@ project(':zeroq-common-core') {
 
 project(':zeroq-back-service') {
 	dependencies {
-		implementation project(':zeroq-common-core')
+		implementation project(':web-common-core')
 //        implementation project(':common-database')
 //        implementation project(':common-log')
 	}
@@ -80,6 +80,12 @@ project(':zeroq-back-service') {
 
 project(':zeroq-back-sensor') {
 	dependencies {
-		implementation project(':zeroq-common-core')
+		implementation project(':web-common-core')
+	}
+}
+
+project(':auth-back-server') {
+	dependencies {
+		implementation project(':auth-common-core')
 	}
 }
