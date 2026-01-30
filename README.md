@@ -1,10 +1,8 @@
-# ZeroQ - Space Occupancy & Management Platform
+# ZeroQ - 공간 점유율 & 관리 플랫폼
 
-Real-time space occupancy tracking and management platform with microservices architecture.
+실시간 공간 점유율 추적과 공간 운영 관리를 위한 마이크로서비스 기반 플랫폼입니다.
 
-## 🏗️ Architecture Overview
-
-ZeroQ is built as a **multi-service platform** separating concerns for scalability:
+## 🏗️ 아키텍처 개요
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -16,20 +14,18 @@ ZeroQ is built as a **multi-service platform** separating concerns for scalabili
 └──────────────┬──────────────────────────┬───────────────────┘
                │                          │
 ┌──────────────────────────────────────────────────────────────┐
-│                     API Gateway / Load Balancer              │
+│                     API Gateway                              │
 └──────────────┬──────────────────────────┬───────────────────┘
                │                          │
 ┌──────────────────────────────────────────────────────────────┐
 │                    Microservices Layer                       │
 │  ┌─────────────┐  ┌──────────────┐  ┌──────────────┐       │
-│  │ API Server  │  │ Sensor       │  │ Analytics    │       │
-│  │ (Port 8080) │  │ Server       │  │ Server       │       │
-│  │             │  │ (Port 8081)  │  │ (Port 8082)  │       │
+│  │ Main API    │  │ Auth         │  │ Sensor       │       │
+│  │ Service     │  │ Service      │  │ Service      │       │
 │  └─────────────┘  └──────────────┘  └──────────────┘       │
 │  ┌─────────────┐                                            │
-│  │ Admin       │                                            │
-│  │ Server      │                                            │
-│  │ (Port 8083) │                                            │
+│  │ Eureka      │                                            │
+│  │ Registry    │                                            │
 │  └─────────────┘                                            │
 └──────────────┬──────────────────────────┬───────────────────┘
                │                          │
@@ -42,287 +38,98 @@ ZeroQ is built as a **multi-service platform** separating concerns for scalabili
 └──────────────────────────────────────────────────────────────┘
 ```
 
-## 📦 Service Modules
+## 📦 서비스 구성
 
-### 🔵 **zeroq-back-service** - Main API Server
-**Port:** `8080`
+### 🔵 zeroq-back-service (Main API)
+- **포트(local)**: `20180`
+- 공간/점유율/리뷰/즐겨찾기/사용자 위치 API
+- 실행: `./gradlew zeroq-back-service:bootRun`
+- 문서: `zeroq-back-service/README.md`
 
-Core REST API for business logic:
-- User management & authentication
-- Space management
-- Occupancy tracking
-- Reviews & ratings
-- Favorites management
+### 🟡 auth-back-server (Auth)
+- **포트(local)**: `9000`
+- 인증/사용자 관리, 토큰 발급/갱신/검증
+- 실행: `./gradlew auth-back-server:bootRun`
 
-**Start:** `./gradlew zeroq-back-service:bootRun`
+### 🟠 cloud-back-server (Gateway)
+- **포트**: `8080`
+- 요청 라우팅 + JWT 검증 + 사용자 헤더 주입
+- 실행: `./gradlew cloud-back-server:bootRun`
 
-📖 [Detailed Documentation](./zeroq-back-service/README.md)
+### ⚪ eureka-back-server (Registry)
+- **포트**: `8761`
+- 서비스 디스커버리
+- 실행: `./gradlew eureka-back-server:bootRun`
 
----
+### ⚫ zeroq-back-sensor (Sensor stub)
+- **포트**: 기본 8080 (설정 없음)
+- 실행: `./gradlew zeroq-back-sensor:bootRun`
+- 주의: gateway(8080)와 포트 충돌 가능
 
-### 🟢 **zeroq-front-admin** - Admin Portal
-**Framework:** Next.js 16, React 19, TypeScript
+### 🟢 zeroq-front-admin (Admin Web)
+- **포트**: `3000`
+- 실행: `cd zeroq-front-admin && npm install && npm run dev`
 
-Administrative dashboard for:
-- Space management
-- Analytics & reports
-- User management
-- System configuration
+### 🟠 zeroq-front-service (Customer Web)
+- **포트**: `3001`
+- 실행: `cd zeroq-front-service && npm install && npm run dev -- -p 3001`
 
-**Start:**
-```bash
-cd zeroq-front-admin
-npm install
-npm run dev
-```
+### 🟣 web-common-core / auth-common-core
+- 공통 DTO, 유틸리티, Feign 클라이언트
 
----
+## 🚀 빠른 시작
 
-### 🟠 **zeroq-front-service** - Customer App
-**Framework:** Next.js 16, React 19, TypeScript
+### 사전 요구사항
+- Java 21+
+- Node.js 18+
+- MySQL 8+
+- Gradle 9.2.1+
 
-Customer-facing application for:
-- Browse spaces
-- Check occupancy
-- Leave reviews
-- Manage favorites
-
-**Start:**
-```bash
-cd zeroq-front-service
-npm install
-npm run dev
-```
-
----
-
-### 🟣 **web-common-core** - Shared Library
-Shared utilities and base classes:
-- Common DTOs (ResponseDTO, ResponseDataDTO)
-- Utility functions (DateUtils, UuidUtils, HttpUtils)
-- Base exception classes
-- Common validators
-
-**Usage:** Imported as dependency in all services
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-- **Java 21+**
-- **Node.js 18+**
-- **MySQL 8+**
-- **Gradle 9.2.1+**
-- **npm** or **yarn**
-
-### Installation
-
-1. **Clone repository**
+### 설치
 ```bash
 cd /Users/harry/project/zeroq/zeroq-common
-```
-
-2. **Setup database**
-```bash
-# Create MySQL database
-mysql -u root -p << EOF
-CREATE DATABASE zeroq;
-CREATE USER 'zeroq'@'localhost' IDENTIFIED BY 'password';
-GRANT ALL PRIVILEGES ON zeroq.* TO 'zeroq'@'localhost';
-FLUSH PRIVILEGES;
-EOF
-```
-
-3. **Build all modules**
-```bash
 ./gradlew clean build -x test
 ```
 
-### Running Services
-
-**All services together:**
+### 서비스 실행 순서(로컬)
 ```bash
-# Terminal 1 - API Server (Port 8080)
+# 1) Eureka Registry
+./gradlew eureka-back-server:bootRun
+
+# 2) Auth Service
+./gradlew auth-back-server:bootRun
+
+# 3) API Gateway
+./gradlew cloud-back-server:bootRun
+
+# 4) Main API Service
 ./gradlew zeroq-back-service:bootRun
 
-# Terminal 2 - Admin Portal (Port 3000)
+# 5) Admin Frontend
 cd zeroq-front-admin && npm run dev
 
-# Terminal 3 - Customer App (Port 3001)
-cd zeroq-front-service && npm run dev
+# 6) Customer Frontend
+cd zeroq-front-service && npm run dev -- -p 3001
 ```
 
-## 📁 Project Structure
+## 🔐 보안/인증 요약
+- JWT 인증 (Gateway에서 검증)
+- Access Token: 1시간
+- Refresh Token: 14일
 
-```
-zeroq-common/
-├── zeroq-back-service/           # Main API backend
-│   ├── src/main/java/com/zeroq/back/
-│   │   ├── security/             # JWT & Authentication
-│   │   ├── common/               # Shared infrastructure
-│   │   ├── database/pub/         # Data layer (entity/repo/dto)
-│   │   └── service/              # Business logic (act/biz/vo)
-│   ├── README.md                 # Backend API documentation
-│   └── build.gradle
-│
-├── web-common-core/            # Shared library
-│   ├── src/main/java/com/zeroq/core/
-│   │   ├── response/             # Common response DTOs
-│   │   ├── utils/                # Utility classes
-│   │   └── exception/            # Base exceptions
-│   └── build.gradle
-│
-├── zeroq-front-admin/            # Admin portal (Next.js)
-│   ├── app/                      # Next.js app router
-│   ├── package.json
-│   └── README.md
-│
-├── zeroq-front-service/          # Customer app (Next.js)
-│   ├── app/                      # Next.js app router
-│   ├── package.json
-│   └── README.md
-│
-├── CLAUDE.md                      # Architecture guidelines
-├── settings.gradle               # Gradle multi-module config
-└── build.gradle                  # Root Gradle configuration
-```
+## 📊 API 기본 URL
+- 서비스 직행: `http://localhost:20180/api/v1`
+- 게이트웨이 경유: `http://localhost:8080/api/v1`
 
-## 📚 Documentation
+## 📚 문서
+- `zeroq-back-service/README.md` (API 상세)
+- `CLAUDE.md` (아키텍처/패턴)
+- 각 모듈별 README
 
-- **[Backend API Documentation](./zeroq-back-service/README.md)** - REST API endpoints, authentication, configuration
-- **[Architecture Guidelines](./CLAUDE.md)** - Code structure patterns, layer responsibilities, design patterns
-- **[Backend Service Details](./zeroq-back-service/)** - Detailed implementation documentation
-
-## 🔐 Security
-
-- **JWT Authentication** - Stateless token-based authentication
-- **Role-Based Access Control** - USER, OWNER, ADMIN roles
-- **CORS** - Cross-origin request handling configured
-- **Input Validation** - Jakarta Bean Validation throughout
-
-**Note:** Review CORS configuration in production (currently allows all origins)
-
-## 🛠️ Build & Deployment
-
-### Development
+## 🧪 테스트
 ```bash
-./gradlew build -x test
-./gradlew zeroq-back-service:bootRun
-```
-
-### Production Build
-```bash
-./gradlew clean build
-java -jar zeroq-back-service/build/libs/zeroq-back-service-0.0.1-SNAPSHOT.jar
-```
-
-### Environment Profiles
-```bash
-# Local (default)
-./gradlew bootRun --args='--spring.profiles.active=local'
-
-# Development
-./gradlew bootRun --args='--spring.profiles.active=dev'
-
-# Production
-./gradlew bootRun --args='--spring.profiles.active=prod'
-```
-
-## 📊 API Overview
-
-**Base URL:** `http://localhost:8080/api/v1`
-
-### Main Endpoints
-- `POST /auth/signup` - User registration
-- `POST /auth/login` - User login
-- `GET /spaces` - List all spaces
-- `GET /occupancy/spaces/{id}` - Current occupancy
-- `GET /reviews/spaces/{id}` - Space reviews
-- `POST /favorites/{spaceId}` - Add to favorites
-
-📖 Full API documentation: [Backend README](./zeroq-back-service/README.md#api-endpoints)
-
-## 🧪 Testing
-
-```bash
-# Run all tests
 ./gradlew test
-
-# Run specific module tests
-./gradlew zeroq-back-service:test
-
-# Run single test
-./gradlew zeroq-back-service:test --tests com.zeroq.back.SomeTest
 ```
 
-## 📝 Database
-
-- **Type:** MySQL 8
-- **DDL Management:** Manual (Hibernate ddl-auto: validate)
-- **ORM:** Spring Data JPA with Hibernate
-- **Connection:** Master-Slave architecture support
-- **Entities:** 25 core entities with relationships
-
-## 🤝 Contributing
-
-### Adding New Features
-
-1. Follow [Architecture Guidelines](./CLAUDE.md)
-2. Organize by domain: `service/{domain}/(act|biz|vo)`
-3. Create Entity → Repository → DTO → Service → Controller
-4. Add unit tests in `src/test/java`
-5. Update documentation
-
-### Code Standards
-- **Java Version:** 21
-- **Code Style:** Google Java Style Guide
-- **Lombok Usage:** Reduce boilerplate with @Getter, @Setter, @Builder, @Slf4j
-- **Validation:** Use Jakarta Bean Validation annotations
-
-## 🚨 Troubleshooting
-
-### Port Already in Use
-```bash
-# Change port in application.yml
-server:
-  port: 8081
-```
-
-### Database Connection Failed
-- Verify MySQL is running
-- Check credentials in `application-{profile}.yml`
-- Ensure database exists
-
-### JWT Token Errors
-- Verify JWT secret is configured
-- Check token expiration times
-- Ensure Authorization header format: `Bearer {token}`
-
-## 📞 Support
-
-For issues, questions, or feature requests, contact the development team.
-
----
-
-## 📈 Roadmap
-
-- [ ] Microservice separation (Sensor, Analytics servers)
-- [ ] Real-time WebSocket updates
-- [ ] Advanced analytics & reporting
-- [ ] Mobile native apps
-- [ ] Sensor integration with IoT platform
-- [ ] Cache layer optimization (Redis)
-
-## 📅 Version
-
-**Current Version:** 0.0.1-SNAPSHOT
-
-**Last Updated:** January 2024
-
----
-
-## 📄 License
-
+## 📄 라이선스
 Proprietary - All rights reserved
-

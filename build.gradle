@@ -61,12 +61,19 @@ jar {
 }
 
 project(':web-common-core') {
-	// 공통 코드
-
 	bootJar { enabled = false } // core 은 bootJar 로 패키징 할 필요 없음
 	jar { enabled = true }
 
 	dependencies {
+	}
+}
+
+project(':auth-common-core') {
+	bootJar { enabled = false } // core 은 bootJar 로 패키징 할 필요 없음
+	jar { enabled = true }
+
+	dependencies {
+		implementation project(':web-common-core')
 	}
 }
 
