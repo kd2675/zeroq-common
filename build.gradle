@@ -85,6 +85,15 @@ project(':zeroq-back-service') {
 	}
 }
 
+project(':muse-back-service') {
+	dependencies {
+		implementation project(':web-common-core')
+		implementation project(':auth-common-core')
+//        implementation project(':common-database')
+//        implementation project(':common-log')
+	}
+}
+
 project(':zeroq-back-sensor') {
 	dependencies {
 		implementation project(':web-common-core')
