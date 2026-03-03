@@ -1,135 +1,65 @@
-# ZeroQ - 공간 점유율 & 관리 플랫폼
+# zeroq-common Workspace
 
-실시간 공간 점유율 추적과 공간 운영 관리를 위한 마이크로서비스 기반 플랫폼입니다.
+`zeroq-common`은 ZeroQ/Muse/Semo 계열 서비스를 함께 운영하는 모노레포 워크스페이스입니다.
 
-## 🏗️ 아키텍처 개요
+## Repository 구성
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      Frontend                               │
-│  ┌──────────────────┐        ┌──────────────────┐          │
-│  │  Admin Portal    │        │  User App        │          │
-│  │  (Next.js)       │        │  (Next.js)       │          │
-│  └──────────────────┘        └──────────────────┘          │
-└──────────────┬──────────────────────────┬───────────────────┘
-               │                          │
-┌──────────────────────────────────────────────────────────────┐
-│                     API Gateway                              │
-└──────────────┬──────────────────────────┬───────────────────┘
-               │                          │
-┌──────────────────────────────────────────────────────────────┐
-│                    Microservices Layer                       │
-│  ┌─────────────┐  ┌──────────────┐  ┌──────────────┐       │
-│  │ Main API    │  │ Auth         │  │ Sensor       │       │
-│  │ Service     │  │ Service      │  │ Service      │       │
-│  └─────────────┘  └──────────────┘  └──────────────┘       │
-│  ┌─────────────┐                                            │
-│  │ Eureka      │                                            │
-│  │ Registry    │                                            │
-│  └─────────────┘                                            │
-└──────────────┬──────────────────────────┬───────────────────┘
-               │                          │
-┌──────────────────────────────────────────────────────────────┐
-│                   Shared Resources                           │
-│  ┌──────────────┐        ┌──────────────┐                  │
-│  │ MySQL 8      │        │ Common Core  │                  │
-│  │ (Database)   │        │ (Shared Lib) │                  │
-│  └──────────────┘        └──────────────┘                  │
-└──────────────────────────────────────────────────────────────┘
-```
+### Gradle 백엔드 모듈 (`settings.gradle` 포함)
+- `zeroq-back-service`
+- `zeroq-back-sensor`
+- `auth-back-server`
+- `auth-common-core`
+- `cloud-back-server`
+- `eureka-back-server`
+- `web-common-core`
+- `semo-back-service`
+- `muse-back-service`
+- `image-back-server`
 
-## 📦 서비스 구성
+### 독립 프론트엔드 앱 (Node/Next.js)
+- `zeroq-front-admin`
+- `zeroq-front-service`
+- `muse-front-service`
+- `semo-front-service`
 
-### 🔵 zeroq-back-service (Main API)
-- **포트(local)**: `20180`
-- 공간/점유율/리뷰/즐겨찾기/사용자 위치 API
-- 실행: `./gradlew zeroq-back-service:bootRun`
-- 문서: `zeroq-back-service/README.md`
+## 빠른 시작
 
-### 🟡 auth-back-server (Auth)
-- **포트(local)**: `9000`
-- 인증/사용자 관리, 토큰 발급/갱신/검증
-- 실행: `./gradlew auth-back-server:bootRun`
-
-### 🟠 cloud-back-server (Gateway)
-- **포트**: `8080`
-- 요청 라우팅 + JWT 검증 + 사용자 헤더 주입
-- 실행: `./gradlew cloud-back-server:bootRun`
-
-### ⚪ eureka-back-server (Registry)
-- **포트**: `8761`
-- 서비스 디스커버리
-- 실행: `./gradlew eureka-back-server:bootRun`
-
-### ⚫ zeroq-back-sensor (Sensor stub)
-- **포트**: 기본 8080 (설정 없음)
-- 실행: `./gradlew zeroq-back-sensor:bootRun`
-- 주의: gateway(8080)와 포트 충돌 가능
-
-### 🟢 zeroq-front-admin (Admin Web)
-- **포트**: `3000`
-- 실행: `cd zeroq-front-admin && npm install && npm run dev`
-
-### 🟠 zeroq-front-service (Customer Web)
-- **포트**: `3001`
-- 실행: `cd zeroq-front-service && npm install && npm run dev -- -p 3001`
-
-### 🟣 web-common-core / auth-common-core
-- 공통 DTO, 유틸리티, Feign 클라이언트
-
-## 🚀 빠른 시작
-
-### 사전 요구사항
+### 요구사항
 - Java 21+
 - Node.js 18+
 - MySQL 8+
-- Gradle 9.2.1+
 
-### 설치
+### 백엔드 빌드
 ```bash
-cd /Users/harry/project/zeroq/zeroq-common
 ./gradlew clean build -x test
 ```
 
-### 서비스 실행 순서(로컬)
+### 개별 서비스 실행 예시
 ```bash
-# 1) Eureka Registry
-./gradlew eureka-back-server:bootRun
-
-# 2) Auth Service
-./gradlew auth-back-server:bootRun
-
-# 3) API Gateway
-./gradlew cloud-back-server:bootRun
-
-# 4) Main API Service
+# ZeroQ 메인 API
 ./gradlew zeroq-back-service:bootRun
 
-# 5) Admin Frontend
-cd zeroq-front-admin && npm run dev
+# Muse API
+./gradlew muse-back-service:bootRun
 
-# 6) Customer Frontend
-cd zeroq-front-service && npm run dev -- -p 3001
+# 이미지 서버
+./gradlew image-back-server:bootRun
 ```
 
-## 🔐 보안/인증 요약
-- JWT 인증 (Gateway에서 검증)
-- Access Token: 1시간
-- Refresh Token: 14일
-
-## 📊 API 기본 URL
-- 서비스 직행: `http://localhost:20180/api/v1`
-- 게이트웨이 경유: `http://localhost:8080/api/v1`
-
-## 📚 문서
-- `zeroq-back-service/README.md` (API 상세)
-- `CLAUDE.md` (아키텍처/패턴)
-- 각 모듈별 README
-
-## 🧪 테스트
+### 프론트 실행 예시
 ```bash
-./gradlew test
+cd zeroq-front-admin && npm install && npm run dev
+cd zeroq-front-service && npm install && npm run dev -- -p 3001
+cd muse-front-service && npm install && npm run dev
 ```
 
-## 📄 라이선스
-Proprietary - All rights reserved
+## 문서 시작점
+- 전체 문서 맵: `AGENTS_DOCUMENTATION_INDEX.md`
+- 에이전트 작업 가이드: `AGENTS.md`, `AGENTS.ko.md`
+- 아키텍처/코딩 규칙: `CLAUDE.md`
+- Muse 운영 문서: `MUSE_CONTEST_FLOW_KO.md`, `MUSE_CONTEST_E2E_CHECKLIST_KO.md`, `MUSE_CONTEST_DEPLOY_CHECKLIST_KO.md`
+- 현재 작업 우선순위(통합): `WORKLIST.md`
+
+## 참고
+- 루트 `settings.gradle`은 백엔드 모듈만 포함합니다.
+- 프론트 앱은 각 디렉토리에서 별도 `npm` 명령으로 관리합니다.
