@@ -23,6 +23,11 @@
 - `semo-front-service`
 - `sbng-front-service`
 
+### ZeroQ 역할-채널 매핑
+- `USER` (일반 사용자) -> `zeroq-front-service`
+- `MANAGER` (매장 중간관리자) -> `zeroq-front-admin`
+- `ADMIN` (플랫폼 운영자) -> 운영자 전용 권한
+
 ## 빠른 시작
 
 ### 요구사항
