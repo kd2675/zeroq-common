@@ -21,6 +21,7 @@
 - `zeroq-front-service`
 - `muse-front-service`
 - `semo-front-service`
+- `sbng-front-service`
 
 ## 빠른 시작
 
@@ -51,14 +52,15 @@
 cd zeroq-front-admin && npm install && npm run dev
 cd zeroq-front-service && npm install && npm run dev -- -p 3001
 cd muse-front-service && npm install && npm run dev
+cd semo-front-service && npm install && npm run dev
+cd sbng-front-service && npm install && npm run dev
 ```
 
 ## 문서 시작점
 - 전체 문서 맵: `AGENTS_DOCUMENTATION_INDEX.md`
-- 에이전트 작업 가이드: `AGENTS.md`, `AGENTS.ko.md`
-- 아키텍처/코딩 규칙: `CLAUDE.md`
-- Muse 운영 문서: `MUSE_CONTEST_FLOW_KO.md`, `MUSE_CONTEST_E2E_CHECKLIST_KO.md`, `MUSE_CONTEST_DEPLOY_CHECKLIST_KO.md`
-- 현재 작업 우선순위(통합): `WORKLIST.md`
+- 에이전트 작업 가이드: `AGENTS.md`
+- 프로젝트 컨텍스트 요약: `GEMINI.md`
+- Muse 운영 문서(로컬 통합본): `AGENTS_MUSE_CONTEST_UNIFIED.md` *(gitignore 대상)*
 
 ## 참고
 - 루트 `settings.gradle`은 백엔드 모듈만 포함합니다.
