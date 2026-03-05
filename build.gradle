@@ -28,8 +28,8 @@ tasks.named('test') {
 
 
 subprojects {
-	group 'com.zeroq'
-	version '0.0.1-SNAPSHOT'
+	group = 'com.zeroq'
+	version = '0.0.1-SNAPSHOT'
 
 	apply plugin: 'java'
 	apply plugin: 'org.springframework.boot'
@@ -95,6 +95,12 @@ project(':muse-back-service') {
 }
 
 project(':zeroq-back-sensor') {
+	dependencies {
+		implementation project(':web-common-core')
+	}
+}
+
+project(':zeroq-sensor-gateway') {
 	dependencies {
 		implementation project(':web-common-core')
 	}
