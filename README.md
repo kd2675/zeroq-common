@@ -106,6 +106,7 @@ cd zeroq-front-admin && npm install && npm run dev
 - Command reference: `HELP.md`
 - Documentation index: `AGENTS_DOCUMENTATION_INDEX.md`
 - Muse operational note: `AGENTS_MUSE_CONTEST_UNIFIED.md`
+- ZeroQ seat sensor hardware note: `AGENTS_ZEROQ_SEAT_SENSOR_HARDWARE.md`
 
 ## Structural Caveats
 
