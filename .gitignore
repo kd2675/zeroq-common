@@ -39,7 +39,7 @@ out/
 
 # Project exclude paths
 /logs/
-AGENTS*
+#AGENTS*
 /.sisyphus/
 GEMINI*
 /.codex/
