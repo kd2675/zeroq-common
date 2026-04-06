@@ -61,7 +61,7 @@
 ### Muse / Semo / SBNG
 - `muse-back-service`: contest, gallery, home, overview, profile API
 - `muse-front-service`: Muse 메인 제품 프론트엔드
-- `semo-back-service`: 실제 DB 기반 `club`, `profile`, `notice`, `schedule`, `poll`, `attendance`, `timeline`, `dues`, `tournament`, `bracket`, `role management`, `dashboard`, `activity log` API
+- `semo-back-service`: 실제 DB 기반 `club`, `profile`, `notice`, `schedule`, `poll`, `attendance`, `timeline`, `finance`, `tournament`, `bracket`, `role management`, `dashboard`, `activity log` API
 - `semo-front-service`: 사용자 홈, 클럽 탐색/가입, 사용자/관리자 클럽 화면, `/more` 기반 기능 모듈, 관리자 메뉴/멤버/통계/로그 화면이 연결된 Next.js 앱
 - `sbng-front-service`: 기업/브랜드 소개 사이트
 
@@ -80,7 +80,7 @@
   - 일정관리
   - 대회기록
   - 대진표
-  - 회비관리
+  - 재정관리
   - 회원 디렉터리
   - 직책관리(`ADMIN_ONLY`)
 - 관리자 홈, 메뉴 편집, 멤버 관리, 활동 로그, 통계 화면
