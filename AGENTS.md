@@ -41,9 +41,6 @@
 ## Sub-Agent Policy
 
 - 서브 에이전트 관련 상세 규칙은 `AGENTS_SUBAGENT_POLICY.md`로 분리한다.
-- 기본값은 **메인 에이전트 단독 처리**다.
-- 서브에이전트는 `.codex` 에이전트 설정과 `AGENTS.md` **양쪽 모두**에 현재 작업에 대해 서브에이전트 사용을 **명시적이고 무조건적으로 강제하는 문구가 동시에 있을 때만** 사용할 수 있다.
-- 위 조건이 하나라도 빠지면 planner / researcher / coder / reviewer / fixer / tester / worker / default를 포함한 모든 서브에이전트 호출은 금지한다.
 - 이 규칙은 컨텍스트 압축 후에도 유지되어야 하는 **압축 불변 규칙**이다.
 
 ### 코딩 컨벤션
