@@ -9,11 +9,7 @@
 | `README.md` | 워크스페이스 전체 구조와 실행 개요 |
 | `HELP.md` | 루트에서 자주 쓰는 명령 모음 |
 | `AGENTS.md` | 작업 규칙과 문서 유지 기준 |
-| `AGENTS_SEMO_MORE_FEATURE_CHECKLIST.md` | Semo 신규 more 기능 추가/재구성 체크리스트 |
-| `AGENTS_SEMO_TOURNAMENT_RECORD_IMPLEMENTATION_PLAN.md` | Semo 대회기록 more 기능 구현 계획: 참가신청, 엔트리 확정, 브래킷 편성/확정 |
-| `AGENTS_MUSE_CONTEST_UNIFIED.md` | Muse 운영 메모 |
-| `AGENTS_ZEROQ_SEAT_SENSOR_HARDWARE.md` | ZeroQ 좌석 점유 센서 하드웨어 권장안 |
-| `examples/zeroq-seat-sensor-xiao/README.md` | ZeroQ 좌석 센서 XIAO BLE 예제 안내 |
+| `AGENTS_SUBAGENT_POLICY.md` | 서브 에이전트 사용 게이트, 파이프라인, reviewer/tester/fixer 규칙 |
 
 ## Common / Infrastructure
 
@@ -30,9 +26,9 @@
 
 | 경로 | 문서 |
 |---|---|
-| `zeroq-back-service/` | `README.md`, `HELP.md`, `AGENTS.md` |
-| `zeroq-back-sensor/` | `README.md`, `HELP.md`, `AGENTS.md` |
-| `zeroq-sensor-gateway/` | `README.md`, `HELP.md`, `AGENTS.md` |
+| `zeroq-back-service/` | `README.md`, `HELP.md`, `AGENTS.md`, `AGENTS_ZEROQ_CURRENT_FLOW_ANALYSIS_REPORT.md`, `AGENTS_ZEROQ_DEVELOPMENT_ONLY.md` |
+| `zeroq-back-sensor/` | `README.md`, `HELP.md`, `AGENTS.md`, `AGENTS_ZEROQ_SEAT_SENSOR_HARDWARE.md`, `examples/zeroq-seat-sensor-xiao/README.md` |
+| `zeroq-sensor-gateway/` | `README.md`, `HELP.md`, `AGENTS.md`, `AGENTS_ZEROQ_SENSOR_PROTOCOL.md` |
 | `zeroq-front-admin/` | `README.md`, `AGENTS.md` |
 | `zeroq-front-service/` | `README.md`, `AGENTS.md` |
 
@@ -40,10 +36,10 @@
 
 | 경로 | 문서 |
 |---|---|
-| `muse-back-service/` | `README.md`, `HELP.md`, `AGENTS.md` |
+| `muse-back-service/` | `README.md`, `HELP.md`, `AGENTS.md`, `AGENTS_MUSE_CONTEST_UNIFIED.md` |
 | `muse-front-service/` | `README.md`, `AGENTS.md` |
-| `semo-back-service/` | `README.md`, `HELP.md`, `AGENTS.md` |
-| `semo-front-service/` | `README.md`, `AGENTS.md` |
+| `semo-back-service/` | `README.md`, `HELP.md`, `AGENTS.md`, `AGENTS_SEMO_TOURNAMENT_RECORD_IMPLEMENTATION_PLAN.md` |
+| `semo-front-service/` | `README.md`, `AGENTS.md`, `AGENTS_SEMO_MORE_FEATURE_CHECKLIST.md` |
 | `sbng-front-service/` | `README.md`, `AGENTS.md` |
 
 ## Recommended Reading Order
@@ -52,7 +48,7 @@
 2. `AGENTS.md`
 3. 대상 프로젝트의 `README.md`
 4. 대상 프로젝트의 `HELP.md` 또는 `AGENTS.md`
-5. Muse 작업이면 `AGENTS_MUSE_CONTEST_UNIFIED.md`
+5. Muse 작업이면 `muse-back-service/AGENTS_MUSE_CONTEST_UNIFIED.md`
 
 ## Maintenance Rules
 

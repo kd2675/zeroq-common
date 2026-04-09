@@ -153,8 +153,9 @@ npm run dev
 ## Documentation Entry Points
 
 - Workspace guide: `AGENTS.md`
+- Sub-agent policy: `AGENTS_SUBAGENT_POLICY.md`
 - Command reference: `HELP.md`
 - Documentation index: `AGENTS_DOCUMENTATION_INDEX.md`
-- Semo more feature checklist: `AGENTS_SEMO_MORE_FEATURE_CHECKLIST.md`
-- Muse operational note: `AGENTS_MUSE_CONTEST_UNIFIED.md`
-- ZeroQ seat sensor hardware note: `AGENTS_ZEROQ_SEAT_SENSOR_HARDWARE.md`
+- Semo more feature checklist: `semo-front-service/AGENTS_SEMO_MORE_FEATURE_CHECKLIST.md`
+- Muse operational note: `muse-back-service/AGENTS_MUSE_CONTEST_UNIFIED.md`
+- ZeroQ seat sensor hardware note: `zeroq-back-sensor/AGENTS_ZEROQ_SEAT_SENSOR_HARDWARE.md`
