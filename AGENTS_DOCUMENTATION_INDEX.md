@@ -38,7 +38,7 @@
 |---|---|
 | `muse-back-service/` | `README.md`, `HELP.md`, `AGENTS.md`, `AGENTS_MUSE_CONTEST_UNIFIED.md` |
 | `muse-front-service/` | `README.md`, `AGENTS.md` |
-| `semo-back-service/` | `README.md`, `HELP.md`, `AGENTS.md`, `AGENTS_SEMO_TOURNAMENT_RECORD_IMPLEMENTATION_PLAN.md` |
+| `semo-back-service/` | `README.md`, `HELP.md`, `AGENTS.md` |
 | `semo-front-service/` | `README.md`, `AGENTS.md`, `AGENTS_SEMO_MORE_FEATURE_CHECKLIST.md` |
 | `sbng-front-service/` | `README.md`, `AGENTS.md` |
 

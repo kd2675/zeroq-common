@@ -1,4 +1,4 @@
-<!-- Updated: 2026-04-08 -->
+<!-- Updated: 2026-04-09 -->
 
 # zeroq-common Agent Guide
 
@@ -32,23 +32,11 @@
 - `semo-front-service/`
 - `sbng-front-service/`
 
-## Current Focus
+## Service-Specific Guidance
 
-- `semo-front-service/`, `semo-back-service/`는 더 이상 인증 셸만 있는 상태가 아닙니다.
-- 현재 `semo`는 `club`, `profile`, `board notice`, `schedule`, `attendance`, `feature activation`, `bracket`, `tournament`까지 실제 API와 화면이 연결된 상태입니다.
-- `semo`의 핵심 방향은 “모임별 기능을 켜고 끌 수 있는 모듈형 서비스”입니다.
-
-## Semo Feature-Modular Pattern
-
-- 기능 목록은 `feature_catalog`에 둡니다.
-- 모임별 활성화는 `feature_activation`으로 관리합니다.
-- 기능 전용 데이터는 기능명 기준 테이블로 분리합니다.
-  - 예: `attendance_session`, `attendance_checkin`
-- 새 기능을 넣을 때 `club_<feature>` 식으로 묶기보다 기능 도메인 자체를 경계로 보고 설계합니다.
-- 프론트 라우트도 기능성 화면은 `more` 기준으로 맞춥니다.
-  - 유저: `/clubs/[clubId]/more/<feature>`
-  - 관리자: `/clubs/[clubId]/admin/more/<feature>`
-- 관리자 `more`는 기능 설정/운영 쪽, 유저 `more`는 기능 사용 쪽이라는 역할 분리가 기본입니다.
+- 루트 `AGENTS.md`는 워크스페이스 공통 규칙만 유지합니다.
+- 서비스별 설계 원칙, 기능 구조, 응답 계약 상세는 각 프로젝트의 `AGENTS.md`와 `README.md`를 우선 봅니다.
+- `semo`, `muse`, `zeroq` 전용 구현 규칙은 루트에 길게 복제하지 말고 해당 프로젝트 문서에만 유지합니다.
 
 ## Sub-Agent Policy
 
@@ -90,11 +78,9 @@
   - 예: `/api/semo/v1/clubs/{clubId}/more/tournaments`
 - 응답 래퍼는 서비스가 이미 채택한 공통 타입을 반드시 따른다.
   - `web-common-core` 기반 서비스는 `ResponseDataDTO`, `ResponseErrorDTO`를 우선 사용한다.
-  - 새 포맷을 임의로 만들기보다 해당 서비스의 기존 응답 계약에 맞춘다.
-- 에러 응답은 이 저장소 전체가 단일 포맷으로 완전히 통일된 상태는 아니다.
-  - `web-common-core` 계열 기본 포맷: `{ success, code, message }`
-  - `semo` / `zeroq-back-service` 현재 포맷: `{ success, code, message, status, timestamp, path, fieldErrors? }`
-  - 따라서 새 API/예외 처리는 해당 서비스의 기존 에러 계약을 따르고, 별도 `{ code, message, details }` 포맷을 새로 도입하지 않는다.
+  - 새 포맷을 임의로 만들기보다 기존 공통 계약에 맞춘다.
+- 에러 응답은 기본적으로 `web-common-core`의 `{ success, code, message }` 포맷을 사용한다.
+- 별도 `{ code, message, details }` 류의 신규 포맷이나 서비스 전용 에러 바디를 추가하지 않는다.
 - HTTP 상태코드는 현재 공통 `Code`/서비스별 예외 매핑에 맞춰 사용한다.
   - 기본 집합: 200, 201, 400, 401, 403, 404, 409, 500
   - 다만 생성 API의 `201 Created` 적용은 서비스별로 아직 완전히 통일되지 않았으므로, 신규 구현은 대상 서비스의 기존 패턴과 주변 API를 먼저 맞춘다.
@@ -143,6 +129,7 @@
 ## Documentation Rules
 
 - 루트 문서를 바꾸면 관련 서비스 문서와 `AGENTS_DOCUMENTATION_INDEX.md` 정합성도 확인합니다.
+- 서비스별 상세 규칙은 루트에 중복해서 적지 않고 각 프로젝트 문서에 둡니다.
 - 서비스 문서에는 최소한 역할, 실행 명령, 포트, 주요 경로, 통합 의존성을 넣습니다.
 - 구현이 아직 얕은 프로젝트는 그 상태를 그대로 적고 과장하지 않습니다.
 - `semo` 문서는 mock 라우트와 실제 API 라우트를 구분해서 쓰지 말고, 현재 실제 동선 기준으로 설명합니다.
@@ -155,7 +142,9 @@
 - 버그 수정은 가능하면 재현 테스트와 함께 처리합니다.
 - 프론트는 현재 린트와 빌드 확인이 기본 검증입니다.
 - 테스트 공백이 큰 모듈은 문서에도 그 사실을 남깁니다.
-- `semo` 기능 추가 시에는 최소한 `:semo-back-service:test`, `semo-front-service`의 `npm run lint`, `npm run build`를 같이 확인합니다.
+- 백엔드 모듈을 수정했으면 해당 모듈의 테스트 또는 최소 컴파일 검증을 수행합니다.
+- 프론트 앱을 수정했으면 해당 앱의 `npm run lint`, `npm run build`를 기본 검증으로 봅니다.
+- 하나의 기능이 백엔드와 프론트를 함께 수정했다면 양쪽 검증을 같이 수행합니다.
 
 ## Security / Config
 
@@ -170,21 +159,3 @@
 - `HELP.md`
 - `AGENTS_DOCUMENTATION_INDEX.md`
 - `AGENTS_SUBAGENT_POLICY.md`
-- `semo-front-service/AGENTS_SEMO_MORE_FEATURE_CHECKLIST.md`
-- `muse-back-service/AGENTS_MUSE_CONTEST_UNIFIED.md`
-
-
-## JavaScript REPL (Node)
-- Use `js_repl` for Node-backed JavaScript with top-level await in a persistent kernel.
-- `js_repl` is a freeform/custom tool. Direct `js_repl` calls must send raw JavaScript tool input (optionally with first-line `// codex-js-repl: timeout_ms=15000`). Do not wrap code in JSON (for example `{"code":"..."}`), quotes, or markdown code fences.
-- Helpers: `codex.cwd`, `codex.homeDir`, `codex.tmpDir`, `codex.tool(name, args?)`, and `codex.emitImage(imageLike)`.
-- `codex.tool` executes a normal tool call and resolves to the raw tool output object. Use it for shell and non-shell tools alike. Nested tool outputs stay inside JavaScript unless you emit them explicitly.
-- `codex.emitImage(...)` adds one image to the outer `js_repl` function output each time you call it, so you can call it multiple times to emit multiple images. It accepts a data URL, a single `input_image` item, an object like `{ bytes, mimeType }`, or a raw tool response object with exactly one image and no text. It rejects mixed text-and-image content.
-- `codex.tool(...)` and `codex.emitImage(...)` keep stable helper identities across cells. Saved references and persisted objects can reuse them in later cells, but async callbacks that fire after a cell finishes still fail because no exec is active.
-- Request full-resolution image processing with `detail: "original"` only when the `view_image` tool schema includes a `detail` argument. The same availability applies to `codex.emitImage(...)`: if `view_image.detail` is present, you may also pass `detail: "original"` there. Use this when high-fidelity image perception or precise localization is needed, especially for CUA agents.
-- Example of sharing an in-memory Playwright screenshot: `await codex.emitImage({ bytes: await page.screenshot({ type: "jpeg", quality: 85 }), mimeType: "image/jpeg", detail: "original" })`.
-- Example of sharing a local image tool result: `await codex.emitImage(codex.tool("view_image", { path: "/absolute/path", detail: "original" }))`.
-- When encoding an image to send with `codex.emitImage(...)` or `view_image`, prefer JPEG at about 85 quality when lossy compression is acceptable; use PNG when transparency or lossless detail matters. Smaller uploads are faster and less likely to hit size limits.
-- Top-level bindings persist across cells. If a cell throws, prior bindings remain available and bindings that finished initializing before the throw often remain usable in later cells. For code you plan to reuse across cells, prefer declaring or assigning it in direct top-level statements before operations that might throw. If you hit `SyntaxError: Identifier 'x' has already been declared`, first reuse the existing binding, reassign a previously declared `let`, or pick a new descriptive name. Use `{ ... }` only for a short temporary block when you specifically need local scratch names; do not wrap an entire cell in block scope if you want those names reusable later. Reset the kernel with `js_repl_reset` only when you need a clean state.
-- Top-level static import declarations (for example `import x from "./file.js"`) are currently unsupported in `js_repl`; use dynamic imports with `await import("pkg")`, `await import("./file.js")`, or `await import("/abs/path/file.mjs")` instead. Imported local files must be ESM `.js`/`.mjs` files and run in the same REPL VM context. Bare package imports always resolve from REPL-global search roots (`CODEX_JS_REPL_NODE_MODULE_DIRS`, then cwd), not relative to the imported file location. Local files may statically import only other local relative/absolute/`file://` `.js`/`.mjs` files; package and builtin imports from local files must stay dynamic. `import.meta.resolve()` returns importable strings such as `file://...`, bare package names, and `node:...` specifiers. Local file modules reload between execs, while top-level bindings persist until `js_repl_reset`.
-- Avoid direct access to `process.stdout` / `process.stderr` / `process.stdin`; it can corrupt the JSON line protocol. Use `console.log`, `codex.tool(...)`, and `codex.emitImage(...)`.
