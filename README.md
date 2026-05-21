@@ -10,7 +10,8 @@
 
 - Backend baseline
   - Java `21`
-  - Gradle `9.3.0` 계열 wrapper 사용
+  - 루트 Gradle Wrapper `9.2.1`
+  - 일부 하위 백엔드 프로젝트는 독립 wrapper를 별도로 가질 수 있음
   - Spring Boot `4.0.2`
   - Spring Cloud BOM `2025.1.0`
 - Frontend baseline

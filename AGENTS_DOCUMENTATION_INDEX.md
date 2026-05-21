@@ -39,7 +39,7 @@
 | `muse-back-service/` | `README.md`, `HELP.md`, `AGENTS.md`, `AGENTS_MUSE_CONTEST_UNIFIED.md` |
 | `muse-front-service/` | `README.md`, `AGENTS.md` |
 | `semo-back-service/` | `README.md`, `HELP.md`, `AGENTS.md` |
-| `semo-front-service/` | `README.md`, `AGENTS.md`, `AGENTS_SEMO_MORE_FEATURE_CHECKLIST.md` |
+| `semo-front-service/` | `README.md`, `AGENTS.md`, `AGENTS_SEMO_MORE_FEATURE_CHECKLIST.md`, `AGENTS_SEMO_PRODUCT_DIRECTION.md`, `modal-analysis.md` |
 | `sbng-front-service/` | `README.md`, `AGENTS.md` |
 
 ## Recommended Reading Order
@@ -49,6 +49,8 @@
 3. 대상 프로젝트의 `README.md`
 4. 대상 프로젝트의 `HELP.md` 또는 `AGENTS.md`
 5. Muse 작업이면 `muse-back-service/AGENTS_MUSE_CONTEST_UNIFIED.md`
+6. Semo 기능 추가/재구성이면 `semo-front-service/AGENTS_SEMO_MORE_FEATURE_CHECKLIST.md`
+7. Semo 제품 방향 판단이면 `semo-front-service/AGENTS_SEMO_PRODUCT_DIRECTION.md`
 
 ## Maintenance Rules
 
