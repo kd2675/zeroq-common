@@ -22,6 +22,14 @@
 | `eureka-back-server/` | `README.md`, `HELP.md`, `AGENTS.md` |
 | `image-back-server/` | `README.md`, `HELP.md`, `AGENTS.md` |
 
+## Stock
+
+| 경로 | 문서 |
+|---|---|
+| `stock-back-service/` | `README.md`, `AGENTS.md` |
+| `stock-batch-service/` | `README.md`, `AGENTS.md` |
+| `stock-front-service/` | `README.md`, `AGENTS.md` |
+
 ## ZeroQ
 
 | 경로 | 문서 |

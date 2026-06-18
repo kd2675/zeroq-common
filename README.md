@@ -15,7 +15,7 @@
   - Spring Boot `4.0.2`
   - Spring Cloud BOM `2025.1.0`
 - Frontend baseline
-  - Next.js `16.1.x`
+  - Next.js `16.x`
   - React `19.2.3`
   - TypeScript `5.x`
   - Tailwind CSS `4.x`
@@ -34,6 +34,8 @@
 - `semo-back-service`
 - `muse-back-service`
 - `image-back-server`
+- `stock-back-service`
+- `stock-batch-service`
 
 ### Frontend apps managed separately
 - `zeroq-front-admin`
@@ -41,6 +43,7 @@
 - `muse-front-service`
 - `semo-front-service`
 - `sbng-front-service`
+- `stock-front-service`
 
 ## Service Map
 
@@ -65,6 +68,11 @@
 - `semo-back-service`: 실제 DB 기반 `club`, `profile`, `notice`, `schedule`, `poll`, `attendance`, `timeline`, `finance`, `tournament`, `bracket`, `role management`, `dashboard`, `activity log` API
 - `semo-front-service`: 사용자 홈, 클럽 탐색/가입, 사용자/관리자 클럽 화면, `/more` 기반 기능 모듈, 관리자 메뉴/멤버/통계/로그 화면이 연결된 Next.js 앱
 - `sbng-front-service`: 기업/브랜드 소개 사이트
+
+### Stock
+- `stock-back-service`: 주식 모의투자 주문, 계좌, 보유 종목, 체결 내역, 랭킹 API
+- `stock-batch-service`: 외부 시세 수집, Redis 최신가 캐시, 미체결 주문 체결 판단, 일별 정산 워커
+- `stock-front-service`: 주식 모의투자 사용자용 Next.js 앱
 
 ## Semo Snapshot
 
@@ -100,6 +108,8 @@
 - `zeroq-sensor-gateway`: `20191`
 - `muse-back-service`: `20280` (`local/dev`), `10280` (`prod`), `30280` (`test`)
 - `semo-back-service`: `20280` (`local/dev`), `10280` (`prod`), `30280` (`test`)
+- `stock-back-service`: `20480` (`local/dev`), `10480` (`prod`), `30480` (`test`)
+- `stock-batch-service`: `20481` (`local/dev`), `10481` (`prod`), `30481` (`test`)
 
 ### Frontend
 - `muse-front-service`: `3000`
@@ -107,6 +117,7 @@
 - `zeroq-front-admin`: `3002`
 - `semo-front-service`: `3003`
 - `sbng-front-service`: `3004`
+- `stock-front-service`: `3005`
 
 ## Requirements
 
@@ -142,6 +153,89 @@ npm install
 npm run lint
 npm run build
 npm run dev
+```
+
+### Stock backend
+```bash
+./gradlew :stock-back-service:compileJava
+./gradlew :stock-back-service:test
+./gradlew :stock-batch-service:compileJava
+./gradlew :stock-batch-service:test
+```
+
+Stock API는 Gateway를 통해 `/api/stock/v1/**`로 접근합니다. 로그인/회원가입은 기존 `auth-back-server`와 `cloud-back-server`를 사용하며, local OAuth client id는 `stock-front-service`입니다.
+stock 프론트에서 받은 JWT를 gateway가 검증하므로 `AUTH_JWT_SECRET`과 `CLOUD_JWT_SECRET`은 같은 값이어야 합니다.
+
+Stock `local`/`dev` profile은 별도 env가 없으면 다른 백엔드 서비스와 맞춰 원격 개발 인프라 `jdbc:mysql://kimd0.iptime.org:23306/STOCK_SERVICE`와 Redis `kimd0.iptime.org:26379`를 기본값으로 사용합니다. 별도 로컬 MySQL/Redis를 쓰려면 `.env`에서 `STOCK_DB_URL`, `STOCK_REDIS_HOST`, `STOCK_REDIS_PORT`를 직접 오버라이드합니다. `prod` profile은 `STOCK_DB_URL`, `STOCK_DB_USERNAME`, `STOCK_DB_PASSWORD`, `STOCK_REDIS_HOST`, `STOCK_REDIS_PORT`를 명시 주입하는 구조입니다. stock 서비스는 루트 `.env`와 각 서비스 `.env`를 optional import로 읽습니다.
+
+`stock-back-service`는 다른 JPA 백엔드 서비스처럼 `database.datasource.pub.master/slave1`, `PubDataConfig`, `RoutingDataSource`를 사용합니다. read-only 트랜잭션은 slave로 라우팅되며, 현재 local/dev 기본값은 master와 slave가 같은 DB를 보도록 둡니다. `stock-batch-service`는 JPA가 아닌 `JdbcTemplate` 워커라서 단일 `spring.datasource` 자동 구성을 유지합니다.
+루트 `.env.example`은 smoke check와 local/dev override에 쓰는 stock 기본 환경 변수 샘플입니다. 로컬 전용 값은 `.env`로 복사해 사용하고 커밋하지 않습니다.
+
+Full local stock flow:
+
+```bash
+./gradlew :eureka-back-server:bootRun
+./gradlew :auth-back-server:bootRun
+./gradlew :cloud-back-server:bootRun
+./gradlew :stock-back-service:bootRun
+./gradlew :stock-batch-service:bootRun
+cd stock-front-service && npm run dev
+```
+
+Stock smoke check after services are running:
+
+```bash
+scripts/stock-smoke.sh
+STOCK_SMOKE_RUN_BATCH_JOBS=true scripts/stock-smoke.sh
+STOCK_BATCH_INTERNAL_TOKEN=<token> STOCK_SMOKE_RUN_BATCH_JOBS=true scripts/stock-smoke.sh
+ZEROQ_GATEWAY_SHARED_SECRET=<secret> STOCK_BATCH_INTERNAL_TOKEN=<token> STOCK_SMOKE_RUN_GATEWAY_BATCH_JOBS=true scripts/stock-smoke.sh
+STOCK_ACCESS_TOKEN=<jwt> scripts/stock-smoke.sh
+STOCK_ACCESS_TOKEN=<jwt> STOCK_SMOKE_PLACE_ORDER=true scripts/stock-smoke.sh
+STOCK_ACCESS_TOKEN=<jwt> STOCK_SMOKE_PLACE_ORDER=true STOCK_SMOKE_CLIENT_ORDER_ID=my-repeatable-smoke-order scripts/stock-smoke.sh
+```
+
+`STOCK_SMOKE_PLACE_ORDER=true`는 기본적으로 실행 시각 기반 `clientOrderId`를 만들고 같은 실행 안에서 동일 주문키를 한 번 더 보내 중복 접수 방지를 확인합니다. 특정 주문키로 재현하고 싶을 때만 `STOCK_SMOKE_CLIENT_ORDER_ID`를 지정합니다.
+
+현재 repo만으로 HTTP smoke를 빠르게 확인하려면 H2 기반 test/smoke profile smoke를 사용합니다.
+H2 smoke 포트는 일반 local 포트와 분리되어 있으며, 필요하면 `STOCK_H2_BACK_URL`, `STOCK_H2_BATCH_URL`, `STOCK_H2_BATCH_INTERNAL_PORT`로 바꿉니다.
+H2 smoke는 기본 현재가 체결 모드와 `internal-order-book` 모드를 모두 bootRun 경로로 확인합니다.
+
+```bash
+scripts/stock-h2-smoke.sh
+```
+
+Eureka, auth, Cloud Gateway까지 포함해 Docker 없이 gateway 회원가입/로그인, stock public/protected route, 주문 접수/중복/취소, direct batch job, gateway HMAC batch job 경로를 함께 확인하려면 gateway H2 smoke를 사용합니다.
+
+```bash
+scripts/stock-gateway-h2-smoke.sh
+```
+
+auth/gateway 로그인 흐름만 Docker 없이 확인하려면 auth H2 smoke를 사용합니다. 이 스크립트는 Eureka, auth-back H2 smoke profile, cloud gateway를 띄운 뒤 gateway 경유 회원가입, 로그인, 현재 사용자 조회, refresh를 확인합니다.
+
+```bash
+scripts/stock-auth-h2-smoke.sh
+```
+
+Stock front contract check:
+
+```bash
+cd stock-front-service
+npm run verify:contract
+```
+
+`stock-batch-service` job 실행 API는 `STOCK_BATCH_INTERNAL_TOKEN`을 설정하면 `X-Internal-Token` 헤더가 일치해야 실행됩니다. 토큰이 비어 있으면 기본적으로 차단하며, `local`/`test` profile에서만 smoke 편의를 위해 빈 토큰을 허용합니다.
+
+Cloud Gateway를 통해 batch job을 실행할 때는 `POST /internal/stock-batch/v1/jobs/**` 경로를 사용합니다. 이 경로는 일반 사용자 JWT가 아니라 `X-Gateway-Id`, `X-Gateway-Timestamp`, `X-Gateway-Nonce`, `X-Gateway-Signature` 기반 내부 HMAC 인증을 통과해야 하며, gateway가 `STOCK_BATCH_INTERNAL_TOKEN` 값을 `X-Internal-Token`으로 batch 서버에 전달합니다.
+`scripts/stock-smoke.sh`에서 gateway batch job 경로까지 검증하려면 `ZEROQ_GATEWAY_SHARED_SECRET`과 `STOCK_SMOKE_RUN_GATEWAY_BATCH_JOBS=true`를 함께 설정합니다.
+
+장 마감 정산 스케줄은 기본적으로 평일 15:40 `Asia/Seoul` 기준입니다. 운영 시간이나 시장 기준을 바꿔야 하면 `STOCK_BATCH_SETTLEMENT_CRON`, `STOCK_BATCH_SETTLEMENT_ZONE`으로 조정합니다.
+
+### Stock frontend
+```bash
+cd stock-front-service
+npm install
+npm run lint
+npm run build
 ```
 
 ## Workspace Notes

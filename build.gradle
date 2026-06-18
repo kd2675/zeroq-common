@@ -111,3 +111,16 @@ project(':auth-back-server') {
 		implementation project(':auth-common-core')
 	}
 }
+
+project(':stock-back-service') {
+	dependencies {
+		implementation project(':web-common-core')
+		implementation project(':auth-common-core')
+	}
+}
+
+project(':stock-batch-service') {
+	dependencies {
+		implementation project(':web-common-core')
+	}
+}

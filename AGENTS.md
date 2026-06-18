@@ -24,6 +24,8 @@
 - `semo-back-service/`
 - `muse-back-service/`
 - `image-back-server/`
+- `stock-back-service/`
+- `stock-batch-service/`
 
 ### Frontend apps
 - `zeroq-front-admin/`
@@ -31,6 +33,7 @@
 - `muse-front-service/`
 - `semo-front-service/`
 - `sbng-front-service/`
+- `stock-front-service/`
 
 ## Service-Specific Guidance
 
