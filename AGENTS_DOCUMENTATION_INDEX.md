@@ -26,7 +26,7 @@
 
 | 경로 | 문서 |
 |---|---|
-| `stock-back-service/` | `README.md`, `AGENTS.md` |
+| `stock-back-service/` | `README.md`, `AGENTS.md`, `STOCK_MARKET_FEATURE_ROADMAP.md`, `docs/market-simulation/00-overview.md`, `docs/market-simulation/13-code-ownership-map.md`, `docs/market-simulation/14-feature-change-playbooks.md`, `docs/market-simulation/15-corporate-action-scope.md`, `docs/market-simulation/16-initial-essential-scope-audit.md`, `docs/market-simulation/17-essential-completion-evidence.md`, `docs/market-simulation/feature-handbook/`, `docs/market-simulation/development-specs/` |
 | `stock-batch-service/` | `README.md`, `AGENTS.md` |
 | `stock-front-service/` | `README.md`, `AGENTS.md` |
 
@@ -56,9 +56,17 @@
 2. `AGENTS.md`
 3. 대상 프로젝트의 `README.md`
 4. 대상 프로젝트의 `HELP.md` 또는 `AGENTS.md`
-5. Muse 작업이면 `muse-back-service/AGENTS_MUSE_CONTEST_UNIFIED.md`
-6. Semo 기능 추가/재구성이면 `semo-front-service/AGENTS_SEMO_MORE_FEATURE_CHECKLIST.md`
-7. Semo 제품 방향 판단이면 `semo-front-service/AGENTS_SEMO_PRODUCT_DIRECTION.md`
+5. Stock 기능 개발이면 `stock-back-service/docs/market-simulation/00-overview.md`
+6. Stock 코드 파일별 책임 확인이면 `stock-back-service/docs/market-simulation/13-code-ownership-map.md`
+7. Stock 기능 변경 절차 확인이면 `stock-back-service/docs/market-simulation/14-feature-change-playbooks.md`
+8. Stock 기업 이벤트 추가 판단이면 `stock-back-service/docs/market-simulation/15-corporate-action-scope.md`
+9. Stock 초기 필수 기능 범위 감사이면 `stock-back-service/docs/market-simulation/16-initial-essential-scope-audit.md`
+10. Stock 초기 필수 범위 완료 증거가 필요하면 `stock-back-service/docs/market-simulation/17-essential-completion-evidence.md`
+11. Stock 항목별 개발 핸드오프가 필요하면 `stock-back-service/docs/market-simulation/feature-handbook/00-index.md`
+12. Stock 실제 코드 변경 시작점이 필요하면 `stock-back-service/docs/market-simulation/development-specs/00-index.md`
+13. Muse 작업이면 `muse-back-service/AGENTS_MUSE_CONTEST_UNIFIED.md`
+14. Semo 기능 추가/재구성이면 `semo-front-service/AGENTS_SEMO_MORE_FEATURE_CHECKLIST.md`
+15. Semo 제품 방향 판단이면 `semo-front-service/AGENTS_SEMO_PRODUCT_DIRECTION.md`
 
 ## Maintenance Rules
 

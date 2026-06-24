@@ -230,8 +230,8 @@ batch_pid="$!"
 wait_for_contains "stock-batch started" "${STOCK_BATCH_URL}/internal/stock-batch/v1/system/status" "stock-batch-service"
 
 check_contains "stock-batch market data job" "POST" "${STOCK_BATCH_URL}/internal/stock-batch/v1/jobs/market-data/refresh" "\"processedCount\":1"
-check_contains "stock-batch order execution job" "POST" "${STOCK_BATCH_URL}/internal/stock-batch/v1/jobs/order-execution/run" "\"processedCount\":1"
-check_contains "stock-batch portfolio settlement job" "POST" "${STOCK_BATCH_URL}/internal/stock-batch/v1/jobs/portfolio-settlement/run" "\"processedCount\":2"
+check_contains "stock-batch virtual price execution job" "POST" "${STOCK_BATCH_URL}/internal/stock-batch/v1/jobs/virtual-price-execution/run" "\"processedCount\":1"
+check_contains "stock-batch portfolio settlement job" "POST" "${STOCK_BATCH_URL}/internal/stock-batch/v1/jobs/portfolio-settlement/run" "\"processedCount\":3"
 
 if kill -0 "${batch_pid}" >/dev/null 2>&1; then
   kill "${batch_pid}" >/dev/null 2>&1 || true
@@ -239,13 +239,13 @@ if kill -0 "${batch_pid}" >/dev/null 2>&1; then
 fi
 batch_pid=""
 
-echo "==> starting stock-batch-service internal order book smoke"
-./gradlew :stock-batch-service:bootRun --args="--spring.profiles.active=test,smoke --server.port=${STOCK_BATCH_INTERNAL_PORT} --stock.batch.execution.mode=internal-order-book" \
-  >"${STOCK_SMOKE_LOG_DIR}/stock-batch-service-internal-order-book.log" 2>&1 &
+echo "==> starting stock-batch-service order book smoke"
+./gradlew :stock-batch-service:bootRun --args="--spring.profiles.active=test,smoke --server.port=${STOCK_BATCH_INTERNAL_PORT}" \
+  >"${STOCK_SMOKE_LOG_DIR}/stock-batch-service-order-book.log" 2>&1 &
 batch_pid="$!"
-wait_for_contains "stock-batch internal order book started" "${STOCK_BATCH_INTERNAL_URL}/internal/stock-batch/v1/system/status" "stock-batch-service"
+wait_for_contains "stock-batch order book started" "${STOCK_BATCH_INTERNAL_URL}/internal/stock-batch/v1/system/status" "stock-batch-service"
 
-check_contains "stock-batch internal order book execution job" "POST" "${STOCK_BATCH_INTERNAL_URL}/internal/stock-batch/v1/jobs/order-execution/run" "\"processedCount\":1"
+check_contains "stock-batch order book execution job" "POST" "${STOCK_BATCH_INTERNAL_URL}/internal/stock-batch/v1/jobs/order-book-execution/run" "\"processedCount\":1"
 
 if [[ "${failures}" -gt 0 ]]; then
   echo "stock H2 smoke failed: ${failures} check(s)"

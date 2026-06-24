@@ -36,7 +36,8 @@ STOCK_SMOKE_RUN_GATEWAY_BATCH_JOBS="${STOCK_SMOKE_RUN_GATEWAY_BATCH_JOBS:-false}
 STOCK_SMOKE_GATEWAY_ID="${STOCK_SMOKE_GATEWAY_ID:-stock-smoke-gateway}"
 ZEROQ_GATEWAY_SHARED_SECRET="${ZEROQ_GATEWAY_SHARED_SECRET:-}"
 STOCK_SMOKE_PLACE_ORDER="${STOCK_SMOKE_PLACE_ORDER:-false}"
-STOCK_SMOKE_SYMBOL="${STOCK_SMOKE_SYMBOL:-005930}"
+STOCK_SMOKE_EXPECT_SEEDED_MARKET="${STOCK_SMOKE_EXPECT_SEEDED_MARKET:-false}"
+STOCK_SMOKE_SYMBOL="${STOCK_SMOKE_SYMBOL:-}"
 STOCK_SMOKE_LIMIT_PRICE="${STOCK_SMOKE_LIMIT_PRICE:-70000}"
 STOCK_SMOKE_QUANTITY="${STOCK_SMOKE_QUANTITY:-1}"
 STOCK_SMOKE_RUN_ID="${STOCK_SMOKE_RUN_ID:-$(date +%Y%m%d%H%M%S)}"
@@ -212,6 +213,10 @@ fi
 if [[ "${STOCK_SMOKE_PLACE_ORDER}" == "true" ]]; then
   require_command node
 fi
+if [[ ("${STOCK_SMOKE_EXPECT_SEEDED_MARKET}" == "true" || "${STOCK_SMOKE_PLACE_ORDER}" == "true") && -z "${STOCK_SMOKE_SYMBOL}" ]]; then
+  echo "missing env: STOCK_SMOKE_SYMBOL is required when seeded market or order placement smoke checks are enabled" >&2
+  exit 2
+fi
 
 check_contains "eureka page" "GET" "${EUREKA_URL}" "Eureka"
 check_contains "stock-back status direct" "GET" "${STOCK_BACK_URL}/api/stock/v1/system/status" "stock-back-service"
@@ -219,14 +224,16 @@ check_contains "stock-batch status direct" "GET" "${STOCK_BATCH_URL}/internal/st
 
 if [[ "${STOCK_SMOKE_RUN_BATCH_JOBS}" == "true" ]]; then
   check_contains "stock-batch market data job direct" "POST" "${STOCK_BATCH_URL}/internal/stock-batch/v1/jobs/market-data/refresh" "COMPLETED"
-  check_contains "stock-batch order execution job direct" "POST" "${STOCK_BATCH_URL}/internal/stock-batch/v1/jobs/order-execution/run" "COMPLETED"
+  check_contains "stock-batch virtual price execution job direct" "POST" "${STOCK_BATCH_URL}/internal/stock-batch/v1/jobs/virtual-price-execution/run" "COMPLETED"
+  check_contains "stock-batch order book execution job direct" "POST" "${STOCK_BATCH_URL}/internal/stock-batch/v1/jobs/order-book-execution/run" "COMPLETED"
   check_contains "stock-batch portfolio settlement job direct" "POST" "${STOCK_BATCH_URL}/internal/stock-batch/v1/jobs/portfolio-settlement/run" "COMPLETED"
 fi
 
 if [[ "${STOCK_SMOKE_RUN_GATEWAY_BATCH_JOBS}" == "true" ]]; then
   for job_path in \
     "/internal/stock-batch/v1/jobs/market-data/refresh" \
-    "/internal/stock-batch/v1/jobs/order-execution/run" \
+    "/internal/stock-batch/v1/jobs/virtual-price-execution/run" \
+    "/internal/stock-batch/v1/jobs/order-book-execution/run" \
     "/internal/stock-batch/v1/jobs/portfolio-settlement/run"; do
     gateway_headers=()
     while IFS= read -r header_arg; do
@@ -236,11 +243,14 @@ if [[ "${STOCK_SMOKE_RUN_GATEWAY_BATCH_JOBS}" == "true" ]]; then
   done
 fi
 
-check_contains "stock instruments through gateway" "GET" "${GATEWAY_URL}/api/stock/v1/markets/instruments" "005930"
-check_contains "stock prices through gateway" "GET" "${GATEWAY_URL}/api/stock/v1/markets/prices" "currentPrice"
+check_contains "stock instruments through gateway" "GET" "${GATEWAY_URL}/api/stock/v1/markets/instruments" "success"
+check_contains "stock prices through gateway" "GET" "${GATEWAY_URL}/api/stock/v1/markets/prices" "success"
 check_contains "stock rankings through gateway" "GET" "${GATEWAY_URL}/api/stock/v1/markets/rankings" "success"
-check_contains "stock ticks through gateway" "GET" "${GATEWAY_URL}/api/stock/v1/markets/prices/${STOCK_SMOKE_SYMBOL}/ticks" "success"
-check_contains "stock order book through gateway" "GET" "${GATEWAY_URL}/api/stock/v1/markets/order-books/${STOCK_SMOKE_SYMBOL}" "bids"
+if [[ "${STOCK_SMOKE_EXPECT_SEEDED_MARKET}" == "true" ]]; then
+  check_contains "stock seeded instrument through gateway" "GET" "${GATEWAY_URL}/api/stock/v1/markets/instruments" "${STOCK_SMOKE_SYMBOL}"
+  check_contains "stock ticks through gateway" "GET" "${GATEWAY_URL}/api/stock/v1/markets/prices/${STOCK_SMOKE_SYMBOL}/ticks" "success"
+  check_contains "stock order book through gateway" "GET" "${GATEWAY_URL}/api/stock/v1/markets/order-books/${STOCK_SMOKE_SYMBOL}" "bids"
+fi
 
 if [[ -n "${STOCK_ACCESS_TOKEN}" ]]; then
   check_contains "stock user profile through gateway" "GET" "${GATEWAY_URL}/api/stock/v1/users/me" "userKey"
