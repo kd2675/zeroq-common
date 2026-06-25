@@ -1,9 +1,11 @@
 #!/usr/bin/env node
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const root = new URL("..", import.meta.url).pathname;
 const frontRoot = join(root, "stock-front-service");
+const batchRoot = join(root, "stock-batch-service");
+const frontSourceText = readFrontendSourceText();
 
 const files = {
   stockApi: read("app/lib/stock.ts"),
@@ -29,6 +31,7 @@ const initialCorporateActionTypes = [
   "CASH_DIVIDEND",
   "BONUS_ISSUE",
   "STOCK_DIVIDEND",
+  "DELISTING",
 ];
 
 const adminCorporateActionTypes = initialCorporateActionTypes.filter((type) => type !== "INITIAL_ISSUE");
@@ -39,8 +42,23 @@ const deferredCorporateActionTypes = [
   "RIGHTS_OFFERING",
   "MERGER",
   "SPIN_OFF",
-  "DELISTING",
 ];
+
+const autoParticipantProfileConfigFields = [
+  "orderMultiplier",
+  "aggressionMultiplier",
+  "orderTtlMultiplier",
+  "quantityMultiplier",
+  "holdingPatienceWeight",
+  "deepLossHoldWeight",
+  "profitTakingWeight",
+  "recurringDepositAmount",
+  "recurringDepositIntervalValue",
+  "recurringDepositIntervalUnit",
+];
+
+const batchRuntimeJobNames = parseStockBatchJobNames();
+const frontBatchRuntimeLabels = parseObjectKeys(files.supplyDemandAdmin, "BATCH_JOB_RUNTIME_LABELS");
 
 const checks = [
   ["strict TypeScript is enabled", files.tsconfig.compilerOptions?.strict === true],
@@ -54,6 +72,18 @@ const checks = [
     "수요와 공급 주문 체결",
   ])],
   ["frontend uses configured API base", files.apiLayer.includes("STOCK_CLIENT_ID") && files.apiLayer.includes("STOCK_API_BASE")],
+  ["frontend does not call stock-batch internal API directly", !includesAny(frontSourceText, [
+    "/internal/stock-batch",
+    "localhost:20481",
+    "127.0.0.1:20481",
+    ":20481",
+    "STOCK_BATCH_API",
+    "NEXT_PUBLIC_STOCK_BATCH",
+  ])],
+  ["frontend does not expose stale fixture symbols", !includesAny(frontSourceText, [
+    "ZQ001",
+    "admin-ui-check",
+  ])],
   ["login calls local auth API", includesAll(files.authApi, ["/auth/login", "/auth/refresh", "/auth/logout"])],
   ["signup uses auth user API", files.authApi.includes('"/api/users"') && files.authApi.includes('role: "USER"')],
   ["login page has stock OAuth entries", includesAll(files.login, ["/oauth2/authorize/naver-stock", "/oauth2/authorize/kakao-stock"])],
@@ -85,7 +115,7 @@ const checks = [
   ])],
   ["order book page selects symbol from loaded instruments", includesAll(files.supplyDemand, [
     "useStockUiStore",
-    "resolveOrderBookSymbol",
+    "setOrderBookTicket",
     "value={selectedSymbol}",
     "orderBookQueryOptions(selectedSymbol)",
   ]) && !files.supplyDemand.includes("?? instruments[0]")],
@@ -107,6 +137,31 @@ const checks = [
     "상승 이유",
     "하락 이유",
   ])],
+  ["auto participant profile config fields are wired", autoParticipantProfileConfigFields.every((field) => includesAll(files.types + files.stockApi + files.supplyDemandAdmin, [field]))],
+  ["batch runtime control APIs are wired", includesAll(files.stockApi + files.types + files.supplyDemandAdmin, [
+    "BatchJobRuntimeStatus",
+    "getBatchJobRuntimeControls",
+    "updateBatchJobRuntimeControl",
+    "/api/stock/v1/markets/batch-jobs/runtime-controls",
+    "배치 자동 실행 제어",
+    "formatRuntimeReason",
+    "DB 런타임은 ON이지만 배치 서버 설정이 OFF라 자동 실행은 아직 스킵됩니다.",
+    "배치 서버 설정이 OFF라 DB ON이어도 자동 실행하지 않습니다.",
+  ])],
+  ["auto participant cash flow runtime stays synchronized with shared batch runtime controls", includesAll(files.stockApi + files.types + files.supplyDemandAdmin, [
+    "AutoParticipantCashFlowStatus",
+    "getAutoParticipantCashFlowStatus",
+    "updateAutoParticipantCashFlowStatus",
+    "runAutoParticipantCashFlow",
+    "/api/stock/v1/markets/auto-market/cash-flow",
+    "toCashFlowStatus",
+    "updateRuntimeControlsFromCashFlow",
+    "const nextStatus = result.data",
+    'control.jobName === "auto-participant-cash-flow"',
+    "setBatchJobRuntimeControls((controls) => updateRuntimeControlsFromCashFlow(controls, nextStatus))",
+    "setCashFlowStatus(toCashFlowStatus(nextControl))",
+  ])],
+  ["batch runtime labels cover every batch job", sameSet(batchRuntimeJobNames, frontBatchRuntimeLabels)],
   ["order mutation APIs are wired", includesAll(files.stockApi, ["placeOrder", "cancelOrder", "postJson<Order>", "deleteJson<Order>"])],
   ["auth refresh retry wraps protected APIs", countOccurrences(files.stockApi, "withAuthRefresh(token") >= 7],
   ["dashboard renders portfolio, market, holdings, order book, rankings, orders, executions", includesAll(files.virtualPrice, [
@@ -147,6 +202,69 @@ console.log("stock front contract passed");
 
 function read(relativePath) {
   return readFileSync(join(frontRoot, relativePath), "utf8");
+}
+
+function readFrontendSourceText() {
+  return walkTextFiles(frontRoot)
+    .map((filePath) => readFileSync(filePath, "utf8"))
+    .join("\n");
+}
+
+function walkTextFiles(directory) {
+  return readdirSync(directory)
+    .flatMap((entry) => {
+      const path = join(directory, entry);
+      if (entry === ".next" || entry === "node_modules") {
+        return [];
+      }
+      if (statSync(path).isDirectory()) {
+        return walkTextFiles(path);
+      }
+      return isFrontendTextFile(entry) ? [path] : [];
+    });
+}
+
+function isFrontendTextFile(fileName) {
+  return [".ts", ".tsx", ".js", ".jsx", ".mjs", ".json", ".css"].some((extension) => fileName.endsWith(extension));
+}
+
+function parseStockBatchJobNames() {
+  return walkJavaFiles(join(batchRoot, "src/main/java/stock/batch/service"))
+    .map((filePath) => readFileSync(filePath, "utf8"))
+    .filter((source) => source.includes("implements StockBatchJob"))
+    .map((source) => {
+      const match = source.match(/public\s+static\s+final\s+String\s+JOB_NAME\s*=\s*"([^"]+)"/);
+      if (!match) {
+        throw new Error("StockBatchJob implementation is missing JOB_NAME");
+      }
+      return match[1];
+    })
+    .sort();
+}
+
+function walkJavaFiles(directory) {
+  return readdirSync(directory)
+    .flatMap((entry) => {
+      const path = join(directory, entry);
+      if (statSync(path).isDirectory()) {
+        return walkJavaFiles(path);
+      }
+      return entry.endsWith(".java") ? [path] : [];
+    });
+}
+
+function parseObjectKeys(text, objectName) {
+  const match = text.match(new RegExp(`const\\s+${objectName}\\s*:[\\s\\S]*?=\\s*\\{([\\s\\S]*?)\\n\\};`));
+  if (!match) {
+    throw new Error(`${objectName} object not found`);
+  }
+  return [...match[1].matchAll(/"([^"]+)":\s*\{/g)]
+    .map((matchItem) => matchItem[1])
+    .sort();
+}
+
+function sameSet(left, right) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function includesAll(text, needles) {

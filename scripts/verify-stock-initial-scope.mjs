@@ -12,6 +12,7 @@ const initialCorporateActionTypes = [
   "CASH_DIVIDEND",
   "BONUS_ISSUE",
   "STOCK_DIVIDEND",
+  "DELISTING",
 ];
 
 const adminCorporateActionTypes = initialCorporateActionTypes.filter((type) => type !== "INITIAL_ISSUE");
@@ -22,28 +23,38 @@ const deferredCorporateActionTypes = [
   "RIGHTS_OFFERING",
   "MERGER",
   "SPIN_OFF",
-  "DELISTING",
 ];
 
 const allowedOrderTypes = ["LIMIT", "MARKET"];
-const deferredOrderFeatures = ["STOP", "STOP_LIMIT", "IOC", "FOK", "GTC", "GTD", "CALL_AUCTION", "PRE_OPEN", "AFTER_HOURS"];
+const deferredOrderFeatures = ['"STOP_LIMIT"', '"IOC"', '"FOK"', '"GTC"', '"GTD"', '"CALL_AUCTION"', '"PRE_OPEN"', '"AFTER_HOURS"'];
 const allowedMarketTypes = ["VIRTUAL_PRICE", "ORDER_BOOK"];
 const allowedMarketSessionStatuses = ["OPEN", "CLOSED", "HALTED"];
 
 const files = {
+  rootReadme: read("README.md"),
   corporateActionEnum: read("stock-back-service/src/main/java/stock/back/service/database/entity/StockCorporateActionType.java"),
   orderTypeEnum: read("stock-back-service/src/main/java/stock/back/service/database/entity/OrderType.java"),
   marketTypeEnum: read("stock-back-service/src/main/java/stock/back/service/database/entity/MarketType.java"),
   marketSessionStatusEnum: read("stock-back-service/src/main/java/stock/back/service/database/entity/MarketSessionStatus.java"),
   envExample: read(".env.example"),
   stockBackApplication: read("stock-back-service/src/main/resources/application.yml"),
+  stockBackDevApplication: read("stock-back-service/src/main/resources/application-dev.yml"),
+  stockBackProdApplication: read("stock-back-service/src/main/resources/application-prod.yml"),
   stockBackLocalDirect: read("stock-back-service/src/main/resources/application-local-direct.yml"),
   stockBackBuild: read("stock-back-service/build.gradle"),
   stockBatchApplication: read("stock-batch-service/src/main/resources/application.yml"),
+  stockBatchLocalApplication: read("stock-batch-service/src/main/resources/application-local.yml"),
+  stockBatchDevApplication: read("stock-batch-service/src/main/resources/application-dev.yml"),
+  stockBatchProdApplication: read("stock-batch-service/src/main/resources/application-prod.yml"),
   stockBatchLocalDirect: read("stock-batch-service/src/main/resources/application-local-direct.yml"),
+  cloudGatewayConfiguration: read("cloud-back-server/src/main/java/cloud/back/server/config/AdvancedGatewayConfiguration.java"),
+  cloudApplication: read("cloud-back-server/src/main/resources/application.yml"),
+  cloudTestApplication: read("cloud-back-server/src/test/resources/application.yml"),
   stockBatchApplicationClass: read("stock-batch-service/src/main/java/stock/batch/service/StockBatchServiceApplication.java"),
   stockBatchBuild: read("stock-batch-service/build.gradle"),
   stockBatchReadme: read("stock-batch-service/README.md"),
+  stockBatchAgents: read("stock-batch-service/AGENTS.md"),
+  stockBatchEnvExample: read("stock-batch-service/.env.example"),
   stockBatchArchitecture: read("stock-batch-service/docs/architecture.md"),
   stockBatchMetadataMysqlDdl: read("stock-batch-service/src/main/resources/db/schema/batch-metadata-mysql.sql"),
   stockBatchMetadataH2Ddl: read("stock-batch-service/src/main/resources/db/schema/batch-metadata-h2.sql"),
@@ -56,6 +67,8 @@ const files = {
   frontAdmin: read("stock-front-service/app/supply-demand/admin/page.tsx"),
   frontContractVerifier: read("scripts/verify-stock-front-contract.mjs"),
   stockSystemController: read("stock-back-service/src/main/java/stock/back/service/common/act/StockSystemController.java"),
+  stockBatchAdminClient: read("stock-back-service/src/main/java/stock/back/service/market/client/StockBatchAdminClient.java"),
+  stockBackReadme: read("stock-back-service/README.md"),
   stockAccountController: read("stock-back-service/src/main/java/stock/back/service/trading/act/AccountController.java"),
   stockUserController: read("stock-back-service/src/main/java/stock/back/service/user/act/StockUserController.java"),
   stockTradingController: read("stock-back-service/src/main/java/stock/back/service/trading/act/TradingController.java"),
@@ -67,6 +80,7 @@ const files = {
   stockSmoke: read("scripts/stock-smoke.sh"),
   stockH2Smoke: read("scripts/stock-h2-smoke.sh"),
   stockGatewayH2Smoke: read("scripts/stock-gateway-h2-smoke.sh"),
+  stockAuthH2Smoke: read("scripts/stock-auth-h2-smoke.sh"),
   stockBatchApplicationTest: read("stock-batch-service/src/main/resources/application-test.yml"),
   stockBackSmokeProfile: read("stock-back-service/src/main/resources/application-smoke.yml"),
   stockBatchSmokeProfile: read("stock-batch-service/src/main/resources/application-smoke.yml"),
@@ -89,10 +103,8 @@ const defaultSeedMarkers = [
 
 const ddlPaths = [
   "stock-back-service/src/main/resources/db/ddl/stock_all.sql",
-  "stock-back-service/src/main/resources/db/ddl/stock_market_execution_split_alter.sql",
   "stock-batch-service/src/main/resources/db/ddl/stock_all.sql",
   "stock-batch-service/src/main/resources/db/ddl/stock_h2.sql",
-  "stock-batch-service/src/main/resources/db/ddl/stock_market_execution_split_alter.sql",
 ];
 
 const fullSchemaDdlPaths = [
@@ -125,6 +137,8 @@ const schedulerDisableMarkers = [
   "order-book-execution:\n      enabled: false",
   "corporate-actions:\n      enabled: false",
   "auto-market:\n      enabled: false",
+  "auto-participant-cash-flow:\n      enabled: false",
+  "market-close:\n      enabled: false",
   "settlement:\n      enabled: false",
 ];
 
@@ -135,6 +149,9 @@ const stockBackApiSurface = [
   '@GetMapping("/me")',
   '@GetMapping("/me/status")',
   '@PostMapping("/me")',
+  '@DeleteMapping("/me")',
+  '@PostMapping("/reconnect")',
+  '@PostMapping("/admin/users/{userKey}/cash-adjustments")',
   '@RequestMapping("/api/stock/v1/users")',
   '@RequestMapping("/api/stock/v1")',
   '@GetMapping("/portfolio/me")',
@@ -168,6 +185,19 @@ const stockBackApiSurface = [
   '@GetMapping("/virtual-market")',
   '@GetMapping("/order-book-market")',
   '@GetMapping("/auto-market")',
+  '@GetMapping("/auto-market/participants/overviews")',
+  '@GetMapping("/auto-market/cash-flow")',
+  '@PatchMapping("/auto-market/cash-flow")',
+  '@PostMapping("/auto-market/cash-flow/run")',
+  '@GetMapping("/batch-jobs/runtime-controls")',
+  '@PatchMapping("/batch-jobs/runtime-controls/{jobName}")',
+  '@PatchMapping("/auto-market/profile-configs/{profileType}")',
+  '@PatchMapping("/auto-market/configs/{symbol}")',
+  '@PatchMapping("/auto-market/listing-accounts/{symbol}")',
+  '@PatchMapping("/auto-market/participants/{userKey}")',
+  '@DeleteMapping("/auto-market/participants/{userKey}")',
+  '@PostMapping("/auto-market/participants/{userKey}/cash-adjustments")',
+  '@PatchMapping("/auto-market/participants/{userKey}/symbols/{symbol}")',
 ];
 
 const stockBatchApiSurface = [
@@ -177,8 +207,14 @@ const stockBatchApiSurface = [
   '@PostMapping("/market-data/refresh")',
   '@PostMapping("/virtual-price-execution/run")',
   '@PostMapping("/order-book-execution/run")',
+  '@PostMapping("/auto-participant-cash-flow/run")',
+  '@GetMapping("/auto-participant-cash-flow/status")',
+  '@PatchMapping("/auto-participant-cash-flow/status")',
+  '@GetMapping("/runtime-controls")',
+  '@PatchMapping("/runtime-controls/{jobName}")',
   '@PostMapping("/auto-market/run")',
   '@PostMapping("/portfolio-settlement/run")',
+  '@PostMapping("/market-close/rollover")',
   '@PostMapping("/corporate-actions/run")',
 ];
 
@@ -187,6 +223,9 @@ const stockBackApiSurfaceRoutes = [
   "GET /api/stock/v1/accounts/me",
   "GET /api/stock/v1/accounts/me/status",
   "POST /api/stock/v1/accounts/me",
+  "DELETE /api/stock/v1/accounts/me",
+  "POST /api/stock/v1/accounts/reconnect",
+  "POST /api/stock/v1/accounts/admin/users/{userKey}/cash-adjustments",
   "GET /api/stock/v1/users/me",
   "GET /api/stock/v1/portfolio/me",
   "GET /api/stock/v1/portfolio/me/snapshots",
@@ -218,6 +257,19 @@ const stockBackApiSurfaceRoutes = [
   "GET /api/stock/v1/markets/virtual-market",
   "GET /api/stock/v1/markets/order-book-market",
   "GET /api/stock/v1/markets/auto-market",
+  "GET /api/stock/v1/markets/auto-market/participants/overviews",
+  "GET /api/stock/v1/markets/auto-market/cash-flow",
+  "PATCH /api/stock/v1/markets/auto-market/cash-flow",
+  "POST /api/stock/v1/markets/auto-market/cash-flow/run",
+  "GET /api/stock/v1/markets/batch-jobs/runtime-controls",
+  "PATCH /api/stock/v1/markets/batch-jobs/runtime-controls/{jobName}",
+  "PATCH /api/stock/v1/markets/auto-market/profile-configs/{profileType}",
+  "PATCH /api/stock/v1/markets/auto-market/configs/{symbol}",
+  "PATCH /api/stock/v1/markets/auto-market/listing-accounts/{symbol}",
+  "PATCH /api/stock/v1/markets/auto-market/participants/{userKey}",
+  "DELETE /api/stock/v1/markets/auto-market/participants/{userKey}",
+  "POST /api/stock/v1/markets/auto-market/participants/{userKey}/cash-adjustments",
+  "PATCH /api/stock/v1/markets/auto-market/participants/{userKey}/symbols/{symbol}",
 ];
 
 const stockBatchApiSurfaceRoutes = [
@@ -225,8 +277,14 @@ const stockBatchApiSurfaceRoutes = [
   "POST /internal/stock-batch/v1/jobs/market-data/refresh",
   "POST /internal/stock-batch/v1/jobs/virtual-price-execution/run",
   "POST /internal/stock-batch/v1/jobs/order-book-execution/run",
+  "POST /internal/stock-batch/v1/jobs/auto-participant-cash-flow/run",
+  "GET /internal/stock-batch/v1/jobs/auto-participant-cash-flow/status",
+  "PATCH /internal/stock-batch/v1/jobs/auto-participant-cash-flow/status",
+  "GET /internal/stock-batch/v1/jobs/runtime-controls",
+  "PATCH /internal/stock-batch/v1/jobs/runtime-controls/{jobName}",
   "POST /internal/stock-batch/v1/jobs/auto-market/run",
   "POST /internal/stock-batch/v1/jobs/portfolio-settlement/run",
+  "POST /internal/stock-batch/v1/jobs/market-close/rollover",
   "POST /internal/stock-batch/v1/jobs/corporate-actions/run",
 ];
 
@@ -264,9 +322,8 @@ const checks = [
     arraysEqual(parseTsUnion(files.frontTypes, "MarketSessionStatus"), allowedMarketSessionStatuses),
   ],
   [
-    "admin corporate action choices exclude INITIAL_ISSUE and deferred actions",
-    includesAll(files.frontAdmin, adminCorporateActionTypes.map((type) => `value="${type}"`))
-      && !files.frontAdmin.includes('value="INITIAL_ISSUE"')
+    "admin corporate action choices cover current scope and exclude deferred actions",
+    includesAll(files.frontAdmin, initialCorporateActionTypes.map((type) => `value="${type}"`))
       && !includesAny(files.frontAdmin, deferredCorporateActionTypes),
   ],
   [
@@ -379,6 +436,86 @@ const checks = [
       && includesAll(files.stockBatchApplication, ["active: local-direct", "local-direct:"]),
   ],
   [
+    "stock back default batch client fallback matches local-direct batch port",
+    includesAll(files.stockBackApplication + files.stockBatchAdminClient, [
+      "base-url: ${STOCK_BATCH_API_BASE_URL:http://localhost:20481}",
+      "@Value(\"${stock.batch-client.base-url:http://localhost:20481}\")",
+    ])
+      && !includesAny(files.stockBackApplication + files.stockBatchAdminClient, [
+        "base-url: ${STOCK_BATCH_API_BASE_URL:http://localhost:30481}",
+        "@Value(\"${stock.batch-client.base-url:http://localhost:30481}\")",
+      ]),
+  ],
+  [
+    "stock back dev/prod require explicit stock-batch HTTP boundary",
+    [files.stockBackDevApplication, files.stockBackProdApplication].every((config) =>
+      includesAll(config, [
+        "base-url: ${STOCK_BATCH_API_BASE_URL}",
+        "internal-token: ${STOCK_BATCH_INTERNAL_TOKEN}",
+      ])
+        && !includesAny(config, [
+          "base-url: ${STOCK_BATCH_API_BASE_URL:",
+          "internal-token: ${STOCK_BATCH_INTERNAL_TOKEN:",
+        ]),
+    ),
+  ],
+  [
+    "stock batch dev/prod require explicit internal token and disallow empty token",
+    [files.stockBatchDevApplication, files.stockBatchProdApplication].every((config) =>
+      includesAll(config, [
+        "token: ${STOCK_BATCH_INTERNAL_TOKEN}",
+        "allow-empty-token: false",
+      ])
+        && !includesAny(config, [
+          "token: ${STOCK_BATCH_INTERNAL_TOKEN:",
+          "allow-empty-token: true",
+      ]),
+    ),
+  ],
+  [
+    "cloud gateway requires stock-batch internal token",
+    includesAll(files.cloudApplication, [
+      "token: ${STOCK_BATCH_INTERNAL_TOKEN}",
+    ])
+      && includesAll(files.cloudTestApplication, [
+        "token: test-stock-batch-internal-token",
+      ])
+      && !includesAny(files.cloudApplication, [
+        "token: ${STOCK_BATCH_INTERNAL_TOKEN:",
+        "@Value(\"${stock.batch.internal.token:}\")",
+      ]),
+  ],
+  [
+    "cloud gateway routes stock-batch job control methods and injects internal token",
+    includesAll(files.cloudGatewayConfiguration, [
+      ".path(\"/internal/stock-batch/v1/jobs/**\")",
+      ".and().method(HttpMethod.GET, HttpMethod.POST, HttpMethod.PATCH)",
+      ".setRequestHeader(\"X-Internal-Token\", stockBatchInternalToken)",
+      ".uri(\"lb://stock-batch-service\")",
+    ]),
+  ],
+  [
+    "stock gateway smoke exercises runtime control query and update",
+    includesAll(files.stockSmoke, [
+      "stock-batch runtime controls through gateway",
+      "GET\" \"${GATEWAY_URL}/internal/stock-batch/v1/jobs/runtime-controls\"",
+      "stock-batch runtime control validation through gateway",
+      "PATCH\" \"${GATEWAY_URL}/internal/stock-batch/v1/jobs/runtime-controls/%20\"",
+      "jobName is required",
+    ]),
+  ],
+  [
+    "stock auth and gateway smoke provide cloud stock-batch token",
+    includesAll(files.stockAuthH2Smoke, [
+      "STOCK_AUTH_SMOKE_BATCH_TOKEN=",
+      "export STOCK_BATCH_INTERNAL_TOKEN=",
+    ])
+      && includesAll(files.stockGatewayH2Smoke, [
+        "STOCK_GATEWAY_H2_BATCH_TOKEN=",
+        "export STOCK_BATCH_INTERNAL_TOKEN=",
+      ]),
+  ],
+  [
     "local-direct profile disables discovery and back calls auth directly",
     includesAll(files.stockBackLocalDirect, [
       "discovery:\n      enabled: false",
@@ -387,6 +524,8 @@ const checks = [
       "registerWithEureka: false",
       "fetchRegistry: false",
       "url: ${STOCK_AUTH_BASE_URL:http://localhost:9000}",
+      "base-url: ${STOCK_BATCH_API_BASE_URL:http://localhost:20481}",
+      "internal-token: ${STOCK_BATCH_INTERNAL_TOKEN:local-stock-batch-internal-token}",
       "allowed-origins: ${STOCK_CORS_ALLOWED_ORIGINS:http://localhost:3005,http://127.0.0.1:3005}",
     ])
       && includesAll(files.stockBatchLocalDirect, [
@@ -395,6 +534,49 @@ const checks = [
         "enabled: false",
         "registerWithEureka: false",
         "fetchRegistry: false",
+      ])
+      && includesAll(files.stockBatchLocalApplication, [
+        "token: ${STOCK_BATCH_INTERNAL_TOKEN:local-stock-batch-internal-token}",
+        "allow-empty-token: false",
+      ])
+      && !files.stockBatchLocalApplication.includes("allow-empty-token: true"),
+  ],
+  [
+    "stock local docs and examples match local-direct batch port and token",
+    includesAll(files.envExample, [
+      "STOCK_BATCH_INTERNAL_TOKEN=local-stock-batch-internal-token",
+      "STOCK_BATCH_URL=http://localhost:20481",
+    ])
+      && includesAll(files.rootReadme, [
+        "`20481` (`local/local-direct/dev`)",
+        "기본 `local-direct`는 `local-stock-batch-internal-token`을 사용하고 `20481` 포트로 뜹니다.",
+        "빈 token 허용은 테스트/smoke 편의 profile에서만 켭니다.",
+      ])
+      && includesAll(files.stockBatchReadme, [
+        "| `local-direct` | `20481` |",
+        "기본 `local-direct`는 `local-stock-batch-internal-token`을 사용하고 `20481` 포트로 뜹니다.",
+        "빈 token 허용은 테스트/smoke 편의 profile에서만 켭니다.",
+      ])
+      && includesAll(files.stockBatchAgents, [
+        "local/local-direct/dev 20481",
+        "기본 `local-direct`는 `local-stock-batch-internal-token`을 사용합니다.",
+      ])
+      && includesAll(files.stockBatchEnvExample, [
+        "STOCK_BATCH_INTERNAL_TOKEN=local-stock-batch-internal-token",
+      ])
+      && includesAll(files.stockBackReadme, [
+        "http://localhost:20481",
+        "local-stock-batch-internal-token",
+      ])
+      && includesAll(files.stockSmoke, [
+        'STOCK_BATCH_URL="${STOCK_BATCH_URL:-http://localhost:20481}"',
+        'STOCK_BATCH_INTERNAL_TOKEN="${STOCK_BATCH_INTERNAL_TOKEN:-local-stock-batch-internal-token}"',
+      ])
+      && !includesAny(files.rootReadme + files.stockBatchReadme + files.stockBatchAgents, [
+        "local-direct` | `30481",
+        "local-direct/test 30481",
+        "local-direct 30481",
+        "`local`/`test` profile에서만",
       ]),
   ],
   [
@@ -469,7 +651,6 @@ const checks = [
           + files.stockBatchSystemController
           + files.stockBatchJobController,
         [
-          "/admin",
           "/watchlists",
           "/alerts",
           "/settlements/",

@@ -30,7 +30,7 @@ STOCK_BACK_URL="${STOCK_BACK_URL:-http://localhost:20480}"
 STOCK_BATCH_URL="${STOCK_BATCH_URL:-http://localhost:20481}"
 EUREKA_URL="${EUREKA_URL:-http://localhost:8761}"
 STOCK_ACCESS_TOKEN="${STOCK_ACCESS_TOKEN:-}"
-STOCK_BATCH_INTERNAL_TOKEN="${STOCK_BATCH_INTERNAL_TOKEN:-}"
+STOCK_BATCH_INTERNAL_TOKEN="${STOCK_BATCH_INTERNAL_TOKEN:-local-stock-batch-internal-token}"
 STOCK_SMOKE_RUN_BATCH_JOBS="${STOCK_SMOKE_RUN_BATCH_JOBS:-false}"
 STOCK_SMOKE_RUN_GATEWAY_BATCH_JOBS="${STOCK_SMOKE_RUN_GATEWAY_BATCH_JOBS:-false}"
 STOCK_SMOKE_GATEWAY_ID="${STOCK_SMOKE_GATEWAY_ID:-stock-smoke-gateway}"
@@ -241,6 +241,18 @@ if [[ "${STOCK_SMOKE_RUN_GATEWAY_BATCH_JOBS}" == "true" ]]; then
     done < <(gateway_headers_for "POST" "${GATEWAY_URL}${job_path}")
     check_contains "stock-batch job through gateway ${job_path##*/}" "POST" "${GATEWAY_URL}${job_path}" "COMPLETED" "" "${gateway_headers[@]}"
   done
+
+  gateway_headers=()
+  while IFS= read -r header_arg; do
+    gateway_headers+=("${header_arg}")
+  done < <(gateway_headers_for "GET" "${GATEWAY_URL}/internal/stock-batch/v1/jobs/runtime-controls")
+  check_contains "stock-batch runtime controls through gateway" "GET" "${GATEWAY_URL}/internal/stock-batch/v1/jobs/runtime-controls" "auto-market" "" "${gateway_headers[@]}"
+
+  gateway_headers=()
+  while IFS= read -r header_arg; do
+    gateway_headers+=("${header_arg}")
+  done < <(gateway_headers_for "PATCH" "${GATEWAY_URL}/internal/stock-batch/v1/jobs/runtime-controls/%20")
+  check_contains "stock-batch runtime control validation through gateway" "PATCH" "${GATEWAY_URL}/internal/stock-batch/v1/jobs/runtime-controls/%20" "jobName is required" '{"runtimeEnabled":true,"updatedBy":"stock-smoke"}' "${gateway_headers[@]}"
 fi
 
 check_contains "stock instruments through gateway" "GET" "${GATEWAY_URL}/api/stock/v1/markets/instruments" "success"

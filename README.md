@@ -109,7 +109,7 @@
 - `muse-back-service`: `20280` (`local/dev`), `10280` (`prod`), `30280` (`test`)
 - `semo-back-service`: `20280` (`local/dev`), `10280` (`prod`), `30280` (`test`)
 - `stock-back-service`: `20480` (`local/dev`), `10480` (`prod`), `30480` (`test`)
-- `stock-batch-service`: `20481` (`local/dev`), `10481` (`prod`), `30481` (`test`)
+- `stock-batch-service`: `20481` (`local/local-direct/dev`), `30481` (`test`), `10481` (`prod`)
 
 ### Frontend
 - `muse-front-service`: `3000`
@@ -223,9 +223,9 @@ cd stock-front-service
 npm run verify:contract
 ```
 
-`stock-batch-service` job 실행 API는 `STOCK_BATCH_INTERNAL_TOKEN`을 설정하면 `X-Internal-Token` 헤더가 일치해야 실행됩니다. 토큰이 비어 있으면 기본적으로 차단하며, `local`/`test` profile에서만 smoke 편의를 위해 빈 토큰을 허용합니다.
+`stock-batch-service` job 실행/제어 API는 `X-Internal-Token` 헤더가 `STOCK_BATCH_INTERNAL_TOKEN`과 일치해야 실행됩니다. 기본 `local-direct`는 `local-stock-batch-internal-token`을 사용하고 `20481` 포트로 뜹니다. `local`/`dev`도 `20481`, `test`는 `30481`, `prod`는 `10481`을 사용하며, 빈 token 허용은 테스트/smoke 편의 profile에서만 켭니다.
 
-Cloud Gateway를 통해 batch job을 실행할 때는 `POST /internal/stock-batch/v1/jobs/**` 경로를 사용합니다. 이 경로는 일반 사용자 JWT가 아니라 `X-Gateway-Id`, `X-Gateway-Timestamp`, `X-Gateway-Nonce`, `X-Gateway-Signature` 기반 내부 HMAC 인증을 통과해야 하며, gateway가 `STOCK_BATCH_INTERNAL_TOKEN` 값을 `X-Internal-Token`으로 batch 서버에 전달합니다.
+Cloud Gateway를 통해 batch job을 실행할 때는 `/internal/stock-batch/v1/jobs/**` 경로를 사용합니다. 이 경로는 일반 사용자 JWT가 아니라 `X-Gateway-Id`, `X-Gateway-Timestamp`, `X-Gateway-Nonce`, `X-Gateway-Signature` 기반 내부 HMAC 인증을 통과해야 하며, gateway가 `STOCK_BATCH_INTERNAL_TOKEN` 값을 `X-Internal-Token`으로 batch 서버에 전달합니다.
 `scripts/stock-smoke.sh`에서 gateway batch job 경로까지 검증하려면 `ZEROQ_GATEWAY_SHARED_SECRET`과 `STOCK_SMOKE_RUN_GATEWAY_BATCH_JOBS=true`를 함께 설정합니다.
 
 장 마감 정산 스케줄은 기본적으로 평일 15:40 `Asia/Seoul` 기준입니다. 운영 시간이나 시장 기준을 바꿔야 하면 `STOCK_BATCH_SETTLEMENT_CRON`, `STOCK_BATCH_SETTLEMENT_ZONE`으로 조정합니다.
