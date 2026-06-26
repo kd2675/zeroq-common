@@ -17,6 +17,7 @@ const files = {
   supplyDemandAdminMarket: read("app/supply-demand/admin/market/page.tsx"),
   supplyDemandAdminAccounts: read("app/supply-demand/admin/accounts/page.tsx"),
   supplyDemandAdminAccountsSalary: read("app/supply-demand/admin/accounts/salary/page.tsx"),
+  supplyDemandAdminAccountsProfiles: read("app/supply-demand/admin/accounts/profiles/page.tsx"),
   supplyDemandAdminAccountsParticipants: read("app/supply-demand/admin/accounts/participants/page.tsx"),
   supplyDemandAdminAutomation: read("app/supply-demand/admin/automation/page.tsx"),
   supplyDemandAdminAutomationSymbols: read("app/supply-demand/admin/automation/symbols/page.tsx"),
@@ -136,6 +137,36 @@ const checks = [
     "value={selectedSymbol}",
     "orderBookQueryOptions(selectedSymbol)",
   ]) && !files.supplyDemand.includes("?? instruments[0]")],
+  ["order book trading screen keeps depth above chart", includesAll(files.supplyDemand, [
+    "<OrderBookPanel",
+    "<MarketChartPanel",
+    "ORDER BOOK DEPTH",
+    "PRICE / VOLUME",
+  ]) && appearsBefore(files.supplyDemand, "<OrderBookPanel", "<MarketChartPanel")],
+  ["order book chart supports expandable interactive candlesticks", includesAll(files.supplyDemand, [
+    "lightweight-charts",
+    "createChart",
+    "CandlestickSeries",
+    "HistogramSeries",
+    "chartExpanded",
+    "onExpandedChange",
+    "확대",
+    "축소",
+    "handleScale",
+    "mouseWheel: true",
+    "pinch: true",
+  ])],
+  ["stacked order book uses centered price ladder", includesAll(files.supplyDemand, [
+    "StackedOrderBookRow",
+    "매도 잔량",
+    "매수 잔량",
+    "중앙 현재가",
+    "매도 위 / 매수 아래",
+    "sortAskLevels",
+    "sortBidLevels",
+    "const askLevels = [...addCumulativeQuantity(toFixedOrderBookLevels(sortAskLevels(asks)))].reverse();",
+    "const bidLevels = addCumulativeQuantity(toFixedOrderBookLevels(sortBidLevels(bids)));",
+  ])],
   ["order book admin selects newly created instrument for follow-up actions", includesAll(files.supplyDemandAdmin, [
     "createInstrumentSchema",
     "setActionSymbol(instrument.symbol)",
@@ -155,6 +186,80 @@ const checks = [
     "하락 이유",
   ])],
   ["auto participant profile config fields are wired", autoParticipantProfileConfigFields.every((field) => includesAll(files.types + files.stockApi + files.supplyDemandAdmin, [field]))],
+  ["admin auto market symbol defaults explain operational fields", includesAll(files.supplyDemandAdmin, [
+    "종목별 자동장 기본값",
+    "자동장 대상 종목",
+    "자동 주문 생성",
+    "기본 방향 강도(1-10)",
+    "1회 주문 최대 수량",
+    "미체결 호가 TTL(초)",
+    "stock_auto_market_config",
+    "실제 주문은 종목 기본값, 참여자별 종목 전략, 심리 프로필, 보고서 점수, 계좌 상태를 함께 계산해 생성됩니다.",
+    "참여자별 종목 전략이 있으면 그 값이 우선 적용됩니다.",
+    "예약 현금/수량을 돌려줍니다.",
+  ])],
+  ["admin cash ledger supports paged full view", includesAll(files.types + files.stockApi + files.supplyDemandAdmin, [
+    "AdminCashFlowPage",
+    "getAdminCashFlows",
+    "/api/stock/v1/markets/admin/cash-flows",
+    "전체 현금 원장",
+    "페이지당",
+    "cashFlowPage.hasPrevious",
+    "cashFlowPage.hasNext",
+    "onCashFlowPageChange",
+  ])],
+  ["admin participant page shows per-participant portfolio overview", includesAll(files.supplyDemandAdmin, [
+    "AutoParticipantOverviewDetail",
+    "autoParticipantOverviewByUserKey.get(participant.userKey)",
+    "resolveAutoParticipantHoldingPreview",
+    "자동참가자 투자 현황",
+    "보유/평가",
+    "개별 월급/현금",
+    "탈퇴",
+    "TABLE_HEADER_CELL_CLASS",
+    "overflow-x-auto rounded-md border border-white/10",
+    "보유 평가액",
+    "보유 종목 없음",
+    "추정 총자산",
+    "미실현손익",
+    "순입금",
+    "오늘 거래대금",
+    "매수/매도 대기",
+    "대기 수량",
+    "최근 활동",
+    "todayBuyQuantity",
+    "todayGrossAmount",
+    "openOrderCount",
+    "openBuyQuantity",
+    "openSellQuantity",
+    "lastOrderAt",
+    "lastExecutionAt",
+  ]) && appearsBefore(files.supplyDemandAdmin, "자동 참여자</h2>", "className={TABLE_HEADER_CELL_CLASS}>참여자")
+    && !files.supplyDemandAdmin.includes("sticky top-0 z-20")
+    && !files.supplyDemandAdmin.includes("sticky top-[var(--stock-admin-sticky-top)]")
+    && !files.supplyDemandAdmin.includes("stock-admin-sticky-top")
+    && !files.supplyDemandAdmin.includes("overflow-visible rounded-md border border-white/10")
+    && !files.supplyDemandAdmin.includes("max-h-[72vh] overflow-auto")],
+  ["admin account tab shows profile-level portfolio overview", includesAll(files.supplyDemandAdmin, [
+    "ParticipantProfileOverviewPanel",
+    "resolveParticipantProfileOverviewSummaries",
+    'href: "/supply-demand/admin/accounts/profiles"',
+    "프로필별 자동참가자 현황",
+    "overflow-x-auto rounded-md border border-white/10",
+    "className={`${TABLE_HEADER_CELL_CLASS} text-right`}",
+    "순입금",
+    "손익/수익률",
+    "주요 보유종목",
+    "오늘 거래대금",
+    "대기 매수/매도",
+    "symbolHoldings",
+    "enabledStrategyCount",
+    "lastOrderAt",
+    "lastExecutionAt",
+  ]) && includesAll(files.supplyDemandAdminAccountsProfiles, [
+    "import SupplyDemandAdminPage from \"../../page\"",
+    "export default SupplyDemandAdminPage",
+  ])],
   ["batch runtime control APIs are wired", includesAll(files.stockApi + files.types + files.supplyDemandAdmin, [
     "BatchJobRuntimeStatus",
     "getBatchJobRuntimeControls",
@@ -184,6 +289,7 @@ const checks = [
     'href: "/supply-demand/admin/market"',
     'href: "/supply-demand/admin/accounts"',
     'href: "/supply-demand/admin/accounts/salary"',
+    'href: "/supply-demand/admin/accounts/profiles"',
     'href: "/supply-demand/admin/accounts/participants"',
     'href: "/supply-demand/admin/automation"',
     'href: "/supply-demand/admin/automation/symbols"',
@@ -200,6 +306,7 @@ const checks = [
     files.supplyDemandAdminMarket
       + files.supplyDemandAdminAccounts
       + files.supplyDemandAdminAccountsSalary
+      + files.supplyDemandAdminAccountsProfiles
       + files.supplyDemandAdminAccountsParticipants
       + files.supplyDemandAdminAutomation
       + files.supplyDemandAdminAutomationSymbols
@@ -211,7 +318,7 @@ const checks = [
     "import SupplyDemandAdminPage from \"../page\"",
     "export default SupplyDemandAdminPage",
     ],
-  ) && includesAll(files.supplyDemandAdminAccountsSalary + files.supplyDemandAdminAccountsParticipants + files.supplyDemandAdminAutomationSymbols + files.supplyDemandAdminAutomationListingAuto + files.supplyDemandAdminAutomationStrategies + files.supplyDemandAdminAutomationBatch, [
+  ) && includesAll(files.supplyDemandAdminAccountsSalary + files.supplyDemandAdminAccountsProfiles + files.supplyDemandAdminAccountsParticipants + files.supplyDemandAdminAutomationSymbols + files.supplyDemandAdminAutomationListingAuto + files.supplyDemandAdminAutomationStrategies + files.supplyDemandAdminAutomationBatch, [
     "import SupplyDemandAdminPage from \"../../page\"",
     "export default SupplyDemandAdminPage",
   ]) && includesAll(files.supplyDemandAdminLegacyParticipants, [
@@ -341,6 +448,12 @@ function includesAll(text, needles) {
 
 function includesAny(text, needles) {
   return needles.some((needle) => text.includes(needle));
+}
+
+function appearsBefore(text, leftNeedle, rightNeedle) {
+  const leftIndex = text.indexOf(leftNeedle);
+  const rightIndex = text.indexOf(rightNeedle);
+  return leftIndex >= 0 && rightIndex >= 0 && leftIndex < rightIndex;
 }
 
 function hasDependency(name) {
