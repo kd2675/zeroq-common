@@ -6,7 +6,10 @@ const root = new URL("..", import.meta.url).pathname;
 const batchProfileBehaviorTexts = readProfileBehaviorTexts();
 const batchPolicyText = batchProfileBehaviorTexts.map((source) => source.text).join("\n");
 const backMarketText = read("stock-back-service/src/main/java/stock/back/service/market/biz/MarketService.java");
-const batchRuntimeTestText = read("stock-batch-service/src/test/java/stock/batch/service/automarket/biz/AutoMarketServiceTest.java");
+const batchRuntimeTestText = [
+  read("stock-batch-service/src/test/java/stock/batch/service/automarket/biz/AutoMarketServiceTest.java"),
+  read("stock-batch-service/src/test/java/stock/batch/service/automarket/biz/AutoParticipantCashFlowServiceTest.java"),
+].join("\n");
 
 const sources = {
   batchEnum: parseJavaEnum(read("stock-batch-service/src/main/java/stock/batch/service/batch/automarket/model/AutoParticipantProfileType.java")),
@@ -419,8 +422,10 @@ function profileBehaviorMarkers() {
       /fundRecurringCash_paydayAccumulatorDepositsOnlyAfterConfiguredInterval/,
     ],
     DIVIDEND_REINVESTOR: [
-      /buyBias_dividendReinvestorKeepsBuyingBiasFromRecurringCashAndLongHolding/,
-      /runAutoMarketStep_dividendReinvestorDepositsSmallCashAndBuys/,
+      /buyBias_dividendReinvestorHasNoRecurringCashByDefault/,
+      /dividendReinvestorBehavior_recentDividendPaymentRaisesBuyBiasAndOrderCount/,
+      /runAutoMarketStep_dividendReinvestorBuysAfterDividendPaymentWithoutRecurringCash/,
+      /fundRecurringCash_dividendReinvestorDoesNotReceiveRecurringCash/,
     ],
     LIMIT_DOWN_TRAPPED: [
       /buyBias_limitDownTrappedAvoidsSellingMoreThanPanicSellerWhenDeeplyLosing/,
