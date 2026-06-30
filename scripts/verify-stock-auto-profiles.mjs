@@ -417,7 +417,7 @@ function profileBehaviorMarkers() {
     ],
     PAYDAY_ACCUMULATOR: [
       /buyBias_paydayAccumulatorKeepsHigherBuyBiasThanNoiseTraderOnNeutralSignal/,
-      /fundRecurringCash_paydayAccumulatorDepositsRecurringCashOnlyOncePerDay/,
+      /fundRecurringCash_paydayAccumulatorWithoutDirectRecurringCashSettingDoesNotDeposit/,
       /runAutoMarketStep_paydayAccumulatorDepositsAndBuysWhenNoHoldingExists/,
       /fundRecurringCash_paydayAccumulatorDepositsOnlyAfterConfiguredInterval/,
     ],

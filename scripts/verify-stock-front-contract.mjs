@@ -5,6 +5,7 @@ import { join } from "node:path";
 const root = new URL("..", import.meta.url).pathname;
 const frontRoot = join(root, "stock-front-service");
 const frontSourceText = readFrontendSourceText();
+const supplyDemandAdminSourceText = readAdminSourceText();
 
 const files = {
   stockApi: read("app/lib/stock.ts"),
@@ -12,8 +13,10 @@ const files = {
   home: read("app/page.tsx"),
   virtualPrice: read("app/virtual-price/page.tsx"),
   supplyDemand: read("app/supply-demand/page.tsx"),
+  supplyDemandChart: read("app/supply-demand/MarketChartPanel.tsx"),
   supplyDemandOrders: read("app/supply-demand/orders/page.tsx"),
-  supplyDemandAdmin: read("app/supply-demand/admin/page.tsx"),
+  supplyDemandAdmin: supplyDemandAdminSourceText,
+  supplyDemandAdminConstants: read("app/supply-demand/admin/AdminConstants.ts"),
   supplyDemandAdminMarket: read("app/supply-demand/admin/market/page.tsx"),
   supplyDemandAdminAccounts: read("app/supply-demand/admin/accounts/page.tsx"),
   supplyDemandAdminAccountsSalary: read("app/supply-demand/admin/accounts/salary/page.tsx"),
@@ -76,7 +79,7 @@ const supplyDemandBatchJobNames = [
   "order-book-execution",
   "portfolio-settlement",
 ];
-const frontBatchRuntimeLabels = parseObjectKeys(files.supplyDemandAdmin, "BATCH_JOB_RUNTIME_LABELS");
+const frontBatchRuntimeLabels = parseObjectKeys(files.supplyDemandAdminConstants, "BATCH_JOB_RUNTIME_LABELS");
 
 const checks = [
   ["strict TypeScript is enabled", files.tsconfig.compilerOptions?.strict === true],
@@ -137,13 +140,13 @@ const checks = [
     "value={selectedSymbol}",
     "orderBookQueryOptions(selectedSymbol)",
   ]) && !files.supplyDemand.includes("?? instruments[0]")],
-  ["order book trading screen keeps depth above chart", includesAll(files.supplyDemand, [
+  ["order book trading screen keeps depth above chart", includesAll(files.supplyDemand + files.supplyDemandChart, [
     "<OrderBookPanel",
     "<MarketChartPanel",
     "ORDER BOOK DEPTH",
     "PRICE / VOLUME",
   ]) && appearsBefore(files.supplyDemand, "<OrderBookPanel", "<MarketChartPanel")],
-  ["order book chart supports expandable interactive candlesticks", includesAll(files.supplyDemand, [
+  ["order book chart supports expandable interactive candlesticks", includesAll(files.supplyDemand + files.supplyDemandChart, [
     "lightweight-charts",
     "createChart",
     "CandlestickSeries",
@@ -170,7 +173,9 @@ const checks = [
   ["order book admin selects newly created instrument for follow-up actions", includesAll(files.supplyDemandAdmin, [
     "createInstrumentSchema",
     "setActionSymbol(instrument.symbol)",
-    "setCorporateActions([])",
+    "reportSymbolRef.current = instrument.symbol",
+    "setReportSymbol(instrument.symbol)",
+    "stockKeys.orderBook(instrument.symbol)",
   ])],
   ["corporate actions stay within initial project scope", includesAll(files.types, initialCorporateActionTypes)
     && includesAll(files.supplyDemandAdmin, adminCorporateActionTypes)
@@ -204,20 +209,23 @@ const checks = [
     "/api/stock/v1/markets/admin/cash-flows",
     "전체 현금 원장",
     "페이지당",
-    "cashFlowPage.hasPrevious",
-    "cashFlowPage.hasNext",
-    "onCashFlowPageChange",
+    "hasPrevious",
+    "hasNext",
+    "onPageChange",
   ])],
   ["admin participant page shows per-participant portfolio overview", includesAll(files.supplyDemandAdmin, [
     "AutoParticipantOverviewDetail",
-    "autoParticipantOverviewByUserKey.get(participant.userKey)",
+    "overviewByUserKey.get(participant.userKey)",
+    "includeHoldings: true",
+    "overview?.holdings ?? []",
+    "<AutoParticipantOverviewDetail overview={overview} />",
     "resolveAutoParticipantHoldingPreview",
     "자동참가자 투자 현황",
-    "보유/평가",
+    "자산과 손익",
+    "보유와 평가",
+    "거래와 활동",
     "개별 월급/현금",
     "탈퇴",
-    "TABLE_HEADER_CELL_CLASS",
-    "overflow-x-auto rounded-md border border-white/10",
     "보유 평가액",
     "보유 종목 없음",
     "추정 총자산",
@@ -234,7 +242,7 @@ const checks = [
     "openSellQuantity",
     "lastOrderAt",
     "lastExecutionAt",
-  ]) && appearsBefore(files.supplyDemandAdmin, "자동 참여자</h2>", "className={TABLE_HEADER_CELL_CLASS}>참여자")
+  ]) && appearsBefore(files.supplyDemandAdmin, '<h2 className="text-base font-black">자동 참여자</h2>', "<AdminAutoParticipantCards")
     && !files.supplyDemandAdmin.includes("sticky top-0 z-20")
     && !files.supplyDemandAdmin.includes("sticky top-[var(--stock-admin-sticky-top)]")
     && !files.supplyDemandAdmin.includes("stock-admin-sticky-top")
@@ -244,9 +252,10 @@ const checks = [
     "ParticipantProfileOverviewPanel",
     "resolveParticipantProfileOverviewSummaries",
     'href: "/supply-demand/admin/accounts/profiles"',
+    "activeAdminSection === \"profile-overview\"",
     "프로필별 자동참가자 현황",
-    "overflow-x-auto rounded-md border border-white/10",
-    "className={`${TABLE_HEADER_CELL_CLASS} text-right`}",
+    "ProfileMiniMetric",
+    "ProfileOverviewInfoItem",
     "순입금",
     "손익/수익률",
     "주요 보유종목",
@@ -259,7 +268,7 @@ const checks = [
   ]) && includesAll(files.supplyDemandAdminAccountsProfiles, [
     "import SupplyDemandAdminPage from \"../../page\"",
     "export default SupplyDemandAdminPage",
-  ])],
+  ]) && !files.supplyDemandAdmin.includes('activeAdminSection === "profile-overview"\n      || activeAdminSection === "profiles"')],
   ["batch runtime control APIs are wired", includesAll(files.stockApi + files.types + files.supplyDemandAdmin, [
     "BatchJobRuntimeStatus",
     "getBatchJobRuntimeControls",
@@ -276,7 +285,7 @@ const checks = [
     "/api/stock/v1/markets/auto-market/cash-flow/run",
     "lastCashFlowRun",
     "setLastCashFlowRun(result.data)",
-    "void loadBatchJobRuntimeControls(false)",
+    "queryClient.invalidateQueries({ queryKey: stockKeys.batchJobRuntimeControls() })",
     "resolveBatchManualAction",
     'jobName === "auto-participant-cash-flow"',
     "자동 실행이 중지되어 있어도",
@@ -294,15 +303,14 @@ const checks = [
     'href: "/supply-demand/admin/automation"',
     'href: "/supply-demand/admin/automation/symbols"',
     'href: "/supply-demand/admin/automation/listing-auto"',
-    'href: "/supply-demand/admin/automation/strategies"',
     'href: "/supply-demand/admin/automation/batch"',
     'href: "/supply-demand/admin/events"',
     "filterAutoParticipants",
-    "filterParticipantSymbolConfigs",
+    "selectedAutoParticipantSymbolConfigs",
+    "visibleParticipantUserKeys",
     "참여자 검색",
-    "전략 검색",
     "aria-current",
-  ]) && includesAll(
+  ]) && !files.supplyDemandAdmin.includes("autoMarketSummaryQuery.data ?? status") && includesAll(
     files.supplyDemandAdminMarket
       + files.supplyDemandAdminAccounts
       + files.supplyDemandAdminAccountsSalary
@@ -311,7 +319,6 @@ const checks = [
       + files.supplyDemandAdminAutomation
       + files.supplyDemandAdminAutomationSymbols
       + files.supplyDemandAdminAutomationListingAuto
-      + files.supplyDemandAdminAutomationStrategies
       + files.supplyDemandAdminAutomationBatch
       + files.supplyDemandAdminEvents,
     [
@@ -321,7 +328,7 @@ const checks = [
   ) && includesAll(files.supplyDemandAdminAccountsSalary + files.supplyDemandAdminAccountsProfiles + files.supplyDemandAdminAccountsParticipants + files.supplyDemandAdminAutomationSymbols + files.supplyDemandAdminAutomationListingAuto + files.supplyDemandAdminAutomationStrategies + files.supplyDemandAdminAutomationBatch, [
     "import SupplyDemandAdminPage from \"../../page\"",
     "export default SupplyDemandAdminPage",
-  ]) && includesAll(files.supplyDemandAdminLegacyParticipants, [
+  ]) && includesAll(files.supplyDemandAdminLegacyParticipants + files.supplyDemandAdminAutomationStrategies, [
     "redirect",
     "/supply-demand/admin/accounts/participants",
   ])],
@@ -329,6 +336,9 @@ const checks = [
     "AutoParticipantOverview",
     "getAutoParticipantOverviews",
     "autoParticipantOverviewsQueryOptions",
+    "salaryEligibleParticipantCount",
+    "includeSalaryEligibility",
+    "activeAdminSection === \"salary\"",
     "SalaryEligibilityPanel",
     "resolveSalaryEligibilityRows",
     "월급 지급 대상",
@@ -410,6 +420,12 @@ function readFrontendSourceText() {
     .join("\n");
 }
 
+function readAdminSourceText() {
+  return walkTextFiles(join(frontRoot, "app/supply-demand/admin"))
+    .map((filePath) => readFileSync(filePath, "utf8"))
+    .join("\n");
+}
+
 function walkTextFiles(directory) {
   return readdirSync(directory)
     .flatMap((entry) => {
@@ -429,7 +445,7 @@ function isFrontendTextFile(fileName) {
 }
 
 function parseObjectKeys(text, objectName) {
-  const match = text.match(new RegExp(`const\\s+${objectName}\\s*:[\\s\\S]*?=\\s*\\{([\\s\\S]*?)\\n\\};`));
+  const match = text.match(new RegExp(`(?:export\\s+)?const\\s+${objectName}\\s*:[\\s\\S]*?=\\s*\\{([\\s\\S]*?)\\n\\};`));
   if (!match) {
     throw new Error(`${objectName} object not found`);
   }
