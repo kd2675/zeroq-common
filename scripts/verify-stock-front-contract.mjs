@@ -8,13 +8,13 @@ const frontSourceText = readFrontendSourceText();
 const supplyDemandAdminSourceText = readAdminSourceText();
 
 const files = {
-  stockApi: read("app/lib/stock.ts"),
+  stockApi: readStockApiSourceText(),
   authApi: read("app/lib/auth.ts"),
   home: read("app/page.tsx"),
-  virtualPrice: read("app/virtual-price/page.tsx"),
-  supplyDemand: read("app/supply-demand/page.tsx"),
+  virtualPrice: readSourceText("app/virtual-price"),
+  supplyDemand: readSourceText("app/supply-demand"),
   supplyDemandChart: read("app/supply-demand/MarketChartPanel.tsx"),
-  supplyDemandOrders: read("app/supply-demand/orders/page.tsx"),
+  supplyDemandOrders: readSourceText("app/supply-demand/orders"),
   supplyDemandAdmin: supplyDemandAdminSourceText,
   supplyDemandAdminConstants: read("app/supply-demand/admin/AdminConstants.ts"),
   supplyDemandAdminMarket: read("app/supply-demand/admin/market/page.tsx"),
@@ -29,11 +29,11 @@ const files = {
   supplyDemandAdminAutomationBatch: read("app/supply-demand/admin/automation/batch/page.tsx"),
   supplyDemandAdminEvents: read("app/supply-demand/admin/events/page.tsx"),
   supplyDemandAdminLegacyParticipants: read("app/supply-demand/admin/participants/page.tsx"),
-  login: read("app/login/page.tsx"),
-  queryLayer: read("app/lib/react-query/stockQueries.ts"),
+  login: readSourceText("app/login"),
+  queryLayer: readSourceText("app/lib/react-query"),
   mutationLayer: read("app/lib/react-query/stockMutations.ts"),
   apiLayer: read("app/lib/api.ts"),
-  types: read("app/types/stock.ts"),
+  types: readSourceText("app/types"),
   packageJson: JSON.parse(read("package.json")),
   tsconfig: JSON.parse(read("tsconfig.json")),
 };
@@ -138,14 +138,14 @@ const checks = [
     "useStockUiStore",
     "setOrderBookTicket",
     "value={selectedSymbol}",
-    "orderBookQueryOptions(selectedSymbol)",
+    "orderBookQueryOptions(selectedSymbol",
   ]) && !files.supplyDemand.includes("?? instruments[0]")],
   ["order book trading screen keeps depth above chart", includesAll(files.supplyDemand + files.supplyDemandChart, [
-    "<OrderBookPanel",
+    "<OrderBookDepthPanel",
     "<MarketChartPanel",
     "ORDER BOOK DEPTH",
     "PRICE / VOLUME",
-  ]) && appearsBefore(files.supplyDemand, "<OrderBookPanel", "<MarketChartPanel")],
+  ]) && appearsBefore(files.supplyDemand, "<OrderBookDepthPanel", "<MarketChartPanel")],
   ["order book chart supports expandable interactive candlesticks", includesAll(files.supplyDemand + files.supplyDemandChart, [
     "lightweight-charts",
     "createChart",
@@ -167,15 +167,15 @@ const checks = [
     "매도 위 / 매수 아래",
     "sortAskLevels",
     "sortBidLevels",
-    "const askLevels = [...addCumulativeQuantity(toFixedOrderBookLevels(sortAskLevels(asks)))].reverse();",
-    "const bidLevels = addCumulativeQuantity(toFixedOrderBookLevels(sortBidLevels(bids)));",
+    "stackedAsks: [...fixedAsks].reverse()",
+    "stackedBids: fixedBids",
   ])],
-  ["order book admin selects newly created instrument for follow-up actions", includesAll(files.supplyDemandAdmin, [
+  ["order book admin selects newly created instrument for follow-up actions", includesAll(files.supplyDemandAdmin + files.queryLayer, [
     "createInstrumentSchema",
     "setActionSymbol(instrument.symbol)",
     "reportSymbolRef.current = instrument.symbol",
     "setReportSymbol(instrument.symbol)",
-    "stockKeys.orderBook(instrument.symbol)",
+    "stockKeys.orderBook(symbol)",
   ])],
   ["corporate actions stay within initial project scope", includesAll(files.types, initialCorporateActionTypes)
     && includesAll(files.supplyDemandAdmin, adminCorporateActionTypes)
@@ -284,8 +284,8 @@ const checks = [
     "runAutoParticipantCashFlow",
     "/api/stock/v1/markets/auto-market/cash-flow/run",
     "lastCashFlowRun",
-    "setLastCashFlowRun(result.data)",
-    "queryClient.invalidateQueries({ queryKey: stockKeys.batchJobRuntimeControls() })",
+    "setLastCashFlowRun(cashFlowRunResult.data)",
+    "invalidateBatchRuntimeControlQueries(queryClient)",
     "resolveBatchManualAction",
     'jobName === "auto-participant-cash-flow"',
     "자동 실행이 중지되어 있어도",
@@ -361,7 +361,9 @@ const checks = [
     "보유 스냅샷",
     "기준가 롤오버",
   ])],
-  ["order mutation APIs are wired", includesAll(files.stockApi, ["placeOrder", "cancelOrder", "postJson<Order>", "deleteJson<Order>"])],
+  ["order mutation APIs are wired", includesAll(files.stockApi, ["placeOrder", "cancelOrder"])
+    && includesAny(files.stockApi, ["postJson<Order>", "authenticatedPostJson<Order>"])
+    && includesAny(files.stockApi, ["deleteJson<Order>", "authenticatedDeleteJson<Order>"])],
   ["order book has full my-orders page for open order cancellation", includesAll(files.stockApi + files.supplyDemand + files.supplyDemandOrders, [
     "/supply-demand/orders",
     "전체 보기",
@@ -373,7 +375,13 @@ const checks = [
     "부분 취소",
     'marketType: "ORDER_BOOK"',
   ])],
-  ["auth refresh retry wraps protected APIs", countOccurrences(files.stockApi, "withAuthRefresh(token") >= 7],
+  ["auth refresh retry wraps protected APIs", includesAll(files.stockApi, [
+    "withAuthRefresh",
+    "authenticatedGetJson",
+    "authenticatedPostJson",
+    "authenticatedPatchJson",
+    "authenticatedDeleteJson",
+  ]) && countOccurrences(files.stockApi, "authenticated") >= 7],
   ["dashboard renders portfolio, market, holdings, order book, rankings, orders, executions", includesAll(files.virtualPrice, [
     "총 자산",
     "시장 가격",
@@ -412,6 +420,19 @@ console.log("stock front contract passed");
 
 function read(relativePath) {
   return readFileSync(join(frontRoot, relativePath), "utf8");
+}
+
+function readSourceText(relativePath) {
+  return walkTextFiles(join(frontRoot, relativePath))
+    .map((filePath) => readFileSync(filePath, "utf8"))
+    .join("\n");
+}
+
+function readStockApiSourceText() {
+  return [
+    read("app/lib/stock.ts"),
+    readSourceText("app/lib/stock-api"),
+  ].join("\n");
 }
 
 function readFrontendSourceText() {

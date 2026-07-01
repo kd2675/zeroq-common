@@ -72,7 +72,7 @@ const files = {
   stockAccountController: read("stock-back-service/src/main/java/stock/back/service/trading/act/AccountController.java"),
   stockUserController: read("stock-back-service/src/main/java/stock/back/service/user/act/StockUserController.java"),
   stockTradingController: read("stock-back-service/src/main/java/stock/back/service/trading/act/TradingController.java"),
-  stockMarketController: read("stock-back-service/src/main/java/stock/back/service/market/act/MarketController.java"),
+  stockMarketController: readTree(["stock-back-service/src/main/java/stock/back/service/market/act"]),
   stockBatchJobController: read("stock-batch-service/src/main/java/stock/batch/service/common/act/StockBatchJobController.java"),
   stockBatchSystemController: read("stock-batch-service/src/main/java/stock/batch/service/common/act/StockBatchSystemController.java"),
   stockBackApiSurfaceTest: read("stock-back-service/src/test/java/stock/back/service/common/config/StockBackApiSurfaceContractTest.java"),
@@ -382,7 +382,7 @@ const checks = [
     "stock batch uses separate Spring Batch 6 JDBC metadata schema",
     files.stockBatchBuild.includes("spring-boot-starter-batch-jdbc")
       && files.stockBatchApplication.includes("repository:\n      schema:")
-      && files.stockBatchApplication.includes("datasource:\n        url: jdbc:mysql://kimd0.iptime.org:23306/STOCK_BATCH_METADATA")
+      && files.stockBatchApplication.includes("datasource:\n        url: jdbc:mysql://kimd0.iptime.org:23306/STOCK_BATCH_METADATA?zeroDateTimeBehavior=convertToNull&useLegacyDatetimeCode=false&serverTimezone=Asia/Seoul&noAccessToProcedureBodies=true&useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=5000&socketTimeout=30000&tcpKeepAlive=true")
       && files.stockBatchApplication.includes("STOCK_BATCH_METADATA")
       && includesAll(files.stockBatchMetadataMysqlDdl, batchMetadataMarkers)
       && includesAll(files.stockBatchMetadataH2Ddl, batchMetadataMarkers)

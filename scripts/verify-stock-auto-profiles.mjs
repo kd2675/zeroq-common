@@ -5,7 +5,7 @@ import { join } from "node:path";
 const root = new URL("..", import.meta.url).pathname;
 const batchProfileBehaviorTexts = readProfileBehaviorTexts();
 const batchPolicyText = batchProfileBehaviorTexts.map((source) => source.text).join("\n");
-const backMarketText = read("stock-back-service/src/main/java/stock/back/service/market/biz/MarketService.java");
+const backProfileConfigDefaultsText = read("stock-back-service/src/main/java/stock/back/service/market/biz/AutoParticipantProfileConfigDefaults.java");
 const batchRuntimeTestText = [
   read("stock-batch-service/src/test/java/stock/batch/service/automarket/biz/AutoMarketServiceTest.java"),
   read("stock-batch-service/src/test/java/stock/batch/service/automarket/biz/AutoParticipantCashFlowServiceTest.java"),
@@ -14,12 +14,12 @@ const batchRuntimeTestText = [
 const sources = {
   batchEnum: parseJavaEnum(read("stock-batch-service/src/main/java/stock/batch/service/batch/automarket/model/AutoParticipantProfileType.java")),
   backEnum: parseJavaEnum(read("stock-back-service/src/main/java/stock/back/service/database/entity/AutoParticipantProfileType.java")),
-  frontType: parseTypeUnion(read("stock-front-service/app/types/stock.ts"), "AutoParticipantProfileType"),
+  frontType: parseTypeUnion(read("stock-front-service/app/types/stockAutomation.ts"), "AutoParticipantProfileType"),
   frontOptions: parseFrontOptions(read("stock-front-service/app/lib/autoParticipantProfiles.ts")),
   frontBehaviorDescriptions: parseFrontBehaviorDescriptions(read("stock-front-service/app/lib/autoParticipantProfiles.ts")),
   batchBehaviorClasses: parseBehaviorClasses(batchProfileBehaviorTexts),
   batchPolicies: parseBatchPolicyProfiles(batchPolicyText),
-  backDefaults: parseMapPuts(backMarketText, "defaults"),
+  backDefaults: parseMapPuts(backProfileConfigDefaultsText, "defaults"),
   batchMysqlParticipantDdl: parseDdlConstraintProfiles(read("stock-batch-service/src/main/resources/db/ddl/stock_all.sql"), "chk_stock_auto_participant_profile_type"),
   batchMysqlConfigDdl: parseDdlConstraintProfiles(read("stock-batch-service/src/main/resources/db/ddl/stock_all.sql"), "chk_stock_auto_profile_config_type"),
   batchH2ParticipantDdl: parseDdlConstraintProfiles(read("stock-batch-service/src/main/resources/db/ddl/stock_h2.sql"), "chk_stock_auto_participant_profile_type"),
@@ -49,7 +49,7 @@ if (failed.length) {
 
 const profileDefaultMismatches = compareProfileConfigDefaults(
   parseBatchProfileConfigDefaults(batchPolicyText),
-  parseBackProfileConfigDefaults(backMarketText),
+  parseBackProfileConfigDefaults(backProfileConfigDefaultsText),
   canonical,
 );
 if (profileDefaultMismatches.length) {
