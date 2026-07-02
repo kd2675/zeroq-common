@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 
 const root = new URL("..", import.meta.url).pathname;
 const frontRoot = join(root, "stock-front-service");
@@ -10,6 +10,9 @@ const supplyDemandAdminSourceText = readAdminSourceText();
 const files = {
   stockApi: readStockApiSourceText(),
   authApi: read("app/lib/auth.ts"),
+  rootLayout: read("app/layout.tsx"),
+  simulationTimeBadge: read("app/components/SimulationTimeBadge.tsx"),
+  simulationTime: read("app/lib/simulationTime.ts"),
   home: read("app/page.tsx"),
   virtualPrice: readSourceText("app/virtual-price"),
   supplyDemand: readSourceText("app/supply-demand"),
@@ -29,11 +32,16 @@ const files = {
   supplyDemandAdminAutomationBatch: read("app/supply-demand/admin/automation/batch/page.tsx"),
   supplyDemandAdminEvents: read("app/supply-demand/admin/events/page.tsx"),
   supplyDemandAdminLegacyParticipants: read("app/supply-demand/admin/participants/page.tsx"),
+  supplyDemandAdminAccountsSection: read("app/supply-demand/admin/AdminAccountsSection.tsx"),
+  supplyDemandAdminAutomationSection: read("app/supply-demand/admin/AdminAutomationSection.tsx"),
   login: readSourceText("app/login"),
   queryLayer: readSourceText("app/lib/react-query"),
+  stockAdminQueries: read("app/lib/react-query/stockAdminQueries.ts"),
   mutationLayer: read("app/lib/react-query/stockMutations.ts"),
   apiLayer: read("app/lib/api.ts"),
   types: readSourceText("app/types"),
+  zodFormSchemas: read("app/lib/validation/zodFormSchemas.ts"),
+  accountRequired: readSourceText("app/account-required"),
   packageJson: JSON.parse(read("package.json")),
   tsconfig: JSON.parse(read("tsconfig.json")),
 };
@@ -83,9 +91,39 @@ const frontBatchRuntimeLabels = parseObjectKeys(files.supplyDemandAdminConstants
 
 const checks = [
   ["strict TypeScript is enabled", files.tsconfig.compilerOptions?.strict === true],
+  ["unused TypeScript locals and parameters fail the build", files.tsconfig.compilerOptions?.noUnusedLocals === true && files.tsconfig.compilerOptions?.noUnusedParameters === true],
   ["JavaScript source is disabled", files.tsconfig.compilerOptions?.allowJs === false],
-  ["axios is used for API requests", hasDependency("axios") && files.apiLayer.includes("axios.create")],
+  ["fetch is used through the shared API client", !hasDependency("axios") && includesAll(files.apiLayer, ["fetch(", "requestJson", "DEFAULT_REQUEST_TIMEOUT_MS"])],
   ["React Query is wired", hasDependency("@tanstack/react-query") && includesAll(files.virtualPrice + files.supplyDemand + files.queryLayer, ["useQuery", "queryOptions", "invalidateQueries"])],
+  ["React Query cache writes stay inside centralized cache update module", includesAll(files.queryLayer, [
+    "setBatchRuntimeControlQueryData",
+    "applyPriceStreamEventQueryData",
+    "queryClient.setQueryData",
+  ]) && sameSet(findFrontendFilesContaining(/\bqueryClient\.setQueryData\b|\bsetQueryData</), [
+    "app/lib/react-query/stockCacheUpdates.ts",
+  ])],
+  ["React Query cache invalidation and removal stay inside centralized invalidation module", includesAll(files.queryLayer, [
+    "clearStockQueryCache",
+    "invalidateAccountQueries",
+    "invalidateOrderBookTradingQueries",
+    "queryClient.clear",
+    "queryClient.invalidateQueries",
+    "queryClient.removeQueries",
+  ]) && sameSet(findFrontendFilesContaining(/\bqueryClient\.(clear|invalidateQueries|removeQueries)\b/), [
+    "app/lib/react-query/stockInvalidations.ts",
+  ])],
+  ["simulation time is visible on every page", includesAll(files.rootLayout + files.simulationTimeBadge + files.simulationTime, [
+    "<SimulationTimeBadge />",
+    "SIM TIME",
+    "시뮬레이션 1일 = 실제",
+    "realSecondsPerSimulationDay",
+    "simulationClockQueryOptions",
+    "createSimulationTimeSnapshot",
+  ])],
+  ["auto participant overview query key preserves user key array", includesAll(files.queryLayer, [
+    "autoParticipantOverviews: (options?: { includeHoldings?: boolean; userKeys?: string[] })",
+    "[...(options?.userKeys ?? [])].sort(),",
+  ]) && !files.queryLayer.includes("[...(options?.userKeys ?? [])].sort().join(\",\")")],
   ["root page routes to separated market pages", includesAll(files.home, [
     "/virtual-price",
     "/supply-demand",
@@ -107,6 +145,43 @@ const checks = [
   ])],
   ["login calls local auth API", includesAll(files.authApi, ["/auth/login", "/auth/refresh", "/auth/logout"])],
   ["signup uses auth user API", files.authApi.includes('"/api/users"') && files.authApi.includes('role: "USER"')],
+  ["login form uses schema-based form validation", includesAll(files.login, [
+    "useForm<LoginFormValues, unknown, LoginFormPayload>",
+    "zodResolver(loginFormSchema)",
+    "useWatch({ control: loginForm.control",
+    "loginForm.handleSubmit",
+    "loginFormSchema = z.object",
+  ]) && !files.login.includes("validateLoginForm(")],
+  ["account reconnect form uses schema-based validation", includesAll(files.accountRequired, [
+    "useForm<ReconnectAccountFormValues, unknown, ReconnectAccountPayload>",
+    "zodResolver(reconnectAccountSchema)",
+    "useWatch({ control: reconnectForm.control",
+    "reconnectForm.handleSubmit",
+    "reconnectAccountSchema = z.object",
+  ]) && !files.accountRequired.includes("if (!reconnectAccountCode.trim() || !reconnectRecoveryCode.trim())")],
+  ["admin payload validation reuses shared Zod form primitives", includesAll(files.zodFormSchemas, [
+    "requiredTrimmedString",
+    "requiredUppercaseString",
+    "optionalTrimmedStringAsUndefined",
+    "optionalTrimmedStringAsNull",
+    "positiveNumber",
+    "positiveInteger",
+    "nonNegativeInteger",
+    "integerRange",
+    "numberFromBlankZero",
+  ]) && includesAll(files.supplyDemandAdmin, [
+    "requiredUppercaseString",
+    "numberFromBlankZero",
+    "integerRange",
+    "positiveInteger",
+  ]) && !includesAny(files.supplyDemandAdmin, [
+    "z.coerce.number()",
+    ".transform((value) => value.toUpperCase())",
+    ".transform((value) => value || undefined)",
+    ".transform((value) => value || null)",
+    "nextValue === \"\" ? 0 : Number(nextValue)",
+    "value === \"\" ? 0 : Number(value)",
+  ])],
   ["login page has stock OAuth entries", includesAll(files.login, ["/oauth2/authorize/naver-stock", "/oauth2/authorize/kakao-stock"])],
   ["login redirects all supported users to root", countOccurrences(files.login, 'router.replace("/")') >= 2 && !files.login.includes('router.replace("/virtual-price")') && !files.login.includes('router.replace("/supply-demand/admin")')],
   ["stock account role guard allows USER and ADMIN", includesAll(files.login + files.authApi, ["isStockAccountRole", "UNSUPPORTED_ROLE_MESSAGE", "ADMIN"])],
@@ -131,11 +206,14 @@ const checks = [
     "toQuery",
     "marketType",
     "source",
+    "limit",
     'marketType: "ORDER_BOOK"',
     'source: "INTERNAL_ORDER_BOOK"',
+    "symbol: selectedSymbol",
+    "ACTIVITY_PREVIEW_LIMIT",
   ])],
   ["order book page selects symbol from loaded instruments", includesAll(files.supplyDemand, [
-    "useStockUiStore",
+    "useOrderBookTicketState",
     "setOrderBookTicket",
     "value={selectedSymbol}",
     "orderBookQueryOptions(selectedSymbol",
@@ -191,6 +269,16 @@ const checks = [
     "하락 이유",
   ])],
   ["auto participant profile config fields are wired", autoParticipantProfileConfigFields.every((field) => includesAll(files.types + files.stockApi + files.supplyDemandAdmin, [field]))],
+  ["automation profile tab renders profile config panel", includesAll(files.supplyDemandAdmin + files.supplyDemandAdminAutomationSection, [
+    'href: "/supply-demand/admin/automation"',
+    'label: "프로필"',
+    'if (activeSection === "profiles")',
+    "<AdminProfilesSection",
+    "profileConfigs={profileConfigs}",
+    "editingProfileType={editingProfileType}",
+    "selectedProfileConfig={selectedProfileConfig}",
+    "onSubmit={onSubmitProfileConfig}",
+  ]) && !files.supplyDemandAdminAccountsSection.includes("<AdminProfilesSection")],
   ["admin auto market symbol defaults explain operational fields", includesAll(files.supplyDemandAdmin, [
     "종목별 자동장 기본값",
     "자동장 대상 종목",
@@ -217,7 +305,7 @@ const checks = [
     "AutoParticipantOverviewDetail",
     "overviewByUserKey.get(participant.userKey)",
     "includeHoldings: true",
-    "overview?.holdings ?? []",
+    "EMPTY_AUTO_PARTICIPANT_HOLDINGS",
     "<AutoParticipantOverviewDetail overview={overview} />",
     "resolveAutoParticipantHoldingPreview",
     "자동참가자 투자 현황",
@@ -231,7 +319,7 @@ const checks = [
     "추정 총자산",
     "미실현손익",
     "순입금",
-    "오늘 거래대금",
+    "2시간 거래대금",
     "매수/매도 대기",
     "대기 수량",
     "최근 활동",
@@ -259,16 +347,22 @@ const checks = [
     "순입금",
     "손익/수익률",
     "주요 보유종목",
-    "오늘 거래대금",
+    "2시간 거래대금",
     "대기 매수/매도",
     "symbolHoldings",
     "enabledStrategyCount",
     "lastOrderAt",
     "lastExecutionAt",
   ]) && includesAll(files.supplyDemandAdminAccountsProfiles, [
-    "import SupplyDemandAdminPage from \"../../page\"",
-    "export default SupplyDemandAdminPage",
+    "import AdminPageClient from \"@/app/supply-demand/admin/AdminPageClient\"",
+    "export default AdminPageClient",
   ]) && !files.supplyDemandAdmin.includes('activeAdminSection === "profile-overview"\n      || activeAdminSection === "profiles"')],
+  ["profile-level overview query does not auto poll", includesAll(files.stockAdminQueries + files.supplyDemandAdmin, [
+    "autoParticipantProfileOverviewsQueryOptions",
+    "refetchInterval: options.refetchIntervalMs ?? false",
+    "refetchIntervalMs: false",
+    "onRefreshProfileOverviews",
+  ])],
   ["batch runtime control APIs are wired", includesAll(files.stockApi + files.types + files.supplyDemandAdmin, [
     "BatchJobRuntimeStatus",
     "getBatchJobRuntimeControls",
@@ -322,12 +416,12 @@ const checks = [
       + files.supplyDemandAdminAutomationBatch
       + files.supplyDemandAdminEvents,
     [
-    "import SupplyDemandAdminPage from \"../page\"",
-    "export default SupplyDemandAdminPage",
+    "import AdminPageClient from \"@/app/supply-demand/admin/AdminPageClient\"",
+    "export default AdminPageClient",
     ],
   ) && includesAll(files.supplyDemandAdminAccountsSalary + files.supplyDemandAdminAccountsProfiles + files.supplyDemandAdminAccountsParticipants + files.supplyDemandAdminAutomationSymbols + files.supplyDemandAdminAutomationListingAuto + files.supplyDemandAdminAutomationStrategies + files.supplyDemandAdminAutomationBatch, [
-    "import SupplyDemandAdminPage from \"../../page\"",
-    "export default SupplyDemandAdminPage",
+    "import AdminPageClient from \"@/app/supply-demand/admin/AdminPageClient\"",
+    "export default AdminPageClient",
   ]) && includesAll(files.supplyDemandAdminLegacyParticipants + files.supplyDemandAdminAutomationStrategies, [
     "redirect",
     "/supply-demand/admin/accounts/participants",
@@ -393,7 +487,7 @@ const checks = [
     "최근 체결",
   ])],
   ["dashboard selects symbol from loaded market data", includesAll(files.virtualPrice, [
-    "useStockUiStore",
+    "useVirtualOrderTicketState",
     "resolveSelectedSymbol",
     "priceTicksQueryOptions(selectedSymbol)",
     "orderBookQueryOptions(selectedSymbol)",
@@ -459,6 +553,13 @@ function walkTextFiles(directory) {
       }
       return isFrontendTextFile(entry) ? [path] : [];
     });
+}
+
+function findFrontendFilesContaining(pattern) {
+  return walkTextFiles(join(frontRoot, "app"))
+    .filter((filePath) => pattern.test(readFileSync(filePath, "utf8")))
+    .map((filePath) => relative(frontRoot, filePath))
+    .sort();
 }
 
 function isFrontendTextFile(fileName) {

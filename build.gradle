@@ -80,8 +80,6 @@ project(':auth-common-core') {
 project(':zeroq-back-service') {
 	dependencies {
 		implementation project(':web-common-core')
-//        implementation project(':common-database')
-//        implementation project(':common-log')
 	}
 }
 
@@ -89,8 +87,6 @@ project(':muse-back-service') {
 	dependencies {
 		implementation project(':web-common-core')
 		implementation project(':auth-common-core')
-//        implementation project(':common-database')
-//        implementation project(':common-log')
 	}
 }
 
