@@ -20,6 +20,9 @@ const files = {
   supplyDemandChart: read("app/supply-demand/MarketChartPanel.tsx"),
   supplyDemandOrders: readSourceText("app/supply-demand/orders"),
   supplyDemandAdmin: supplyDemandAdminSourceText,
+  corporateActionDraftState: read("app/supply-demand/admin/useAdminStockEventDraftState.ts"),
+  corporateActionForm: read("app/supply-demand/admin/AdminCorporateActionFormPanel.tsx"),
+  corporateActionPayload: read("app/supply-demand/admin/AdminCorporateActionPayloadHelpers.ts"),
   supplyDemandAdminConstants: read("app/supply-demand/admin/AdminConstants.ts"),
   supplyDemandAdminMarket: read("app/supply-demand/admin/market/page.tsx"),
   supplyDemandAdminAccounts: read("app/supply-demand/admin/accounts/page.tsx"),
@@ -262,6 +265,15 @@ const checks = [
   ["corporate actions stay within initial project scope", includesAll(files.types, initialCorporateActionTypes)
     && includesAll(files.supplyDemandAdmin, adminCorporateActionTypes)
     && !includesAny(files.types + files.supplyDemandAdmin, deferredCorporateActionTypes)],
+  ["snapshot corporate actions require a future ex-rights date", countOccurrences(files.corporateActionDraftState, "exRightsDate: nextDate") === 3
+    && files.corporateActionDraftState.includes("subscriptionStartDate: secondDate")
+    && files.corporateActionForm.includes("const exRightsMinDate = addIsoDateDays(currentSimulationDate, 1);")
+    && includesAll(files.corporateActionPayload, [
+      'validateSnapshotDateAfterCurrent(\n      "배당락일"',
+      'validateSnapshotDateAfterCurrent(\n          "주주배정 권리락일"',
+      'validateSnapshotDateAfterCurrent(\n        "권리락일"',
+      "if (value <= currentSimulationDate)",
+    ])],
   ["instrument report admin flow is wired", includesAll(files.stockApi + files.types + files.supplyDemandAdmin, [
     "InstrumentReport",
     "getInstrumentReports",

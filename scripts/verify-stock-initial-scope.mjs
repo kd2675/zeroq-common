@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const root = new URL("..", import.meta.url).pathname;
@@ -7,7 +7,6 @@ const root = new URL("..", import.meta.url).pathname;
 const initialCorporateActionTypes = [
   "INITIAL_ISSUE",
   "PAID_IN_CAPITAL_INCREASE",
-  "ADDITIONAL_ISSUE",
   "STOCK_SPLIT",
   "CASH_DIVIDEND",
   "BONUS_ISSUE",
@@ -15,7 +14,6 @@ const initialCorporateActionTypes = [
   "DELISTING",
 ];
 
-const adminCorporateActionTypes = initialCorporateActionTypes.filter((type) => type !== "INITIAL_ISSUE");
 const deferredCorporateActionTypes = [
   "SPECIAL_DIVIDEND",
   "CAPITAL_REDUCTION",
@@ -28,7 +26,7 @@ const deferredCorporateActionTypes = [
 const allowedOrderTypes = ["LIMIT", "MARKET"];
 const deferredOrderFeatures = ['"STOP_LIMIT"', '"IOC"', '"FOK"', '"GTC"', '"GTD"', '"CALL_AUCTION"', '"PRE_OPEN"', '"AFTER_HOURS"'];
 const allowedMarketTypes = ["VIRTUAL_PRICE", "ORDER_BOOK"];
-const allowedMarketSessionStatuses = ["OPEN", "CLOSED", "HALTED"];
+const allowedMarketSessionStatuses = ["OPEN", "CLOSED", "HALTED", "CIRCUIT_BREAKER"];
 
 const files = {
   rootReadme: read("README.md"),
@@ -60,14 +58,14 @@ const files = {
   stockBatchMetadataH2Ddl: read("stock-batch-service/src/main/resources/db/schema/batch-metadata-h2.sql"),
   frontApi: read("stock-front-service/app/lib/api.ts"),
   frontAuth: read("stock-front-service/app/lib/auth.ts"),
-  frontStockApi: read("stock-front-service/app/lib/stock.ts"),
+  frontStockApi: read("stock-front-service/app/lib/stock-api/core.ts"),
   frontEnvExample: read("stock-front-service/.env.example"),
   frontNextConfig: read("stock-front-service/next.config.ts"),
-  frontTypes: read("stock-front-service/app/types/stock.ts"),
-  frontAdmin: read("stock-front-service/app/supply-demand/admin/page.tsx"),
+  frontMarketTypes: read("stock-front-service/app/types/stockMarket.ts"),
+  frontTradingTypes: read("stock-front-service/app/types/stockTrading.ts"),
+  frontAdmin: read("stock-front-service/app/supply-demand/admin/AdminStockEventPanel.tsx"),
   frontContractVerifier: read("scripts/verify-stock-front-contract.mjs"),
   stockSystemController: read("stock-back-service/src/main/java/stock/back/service/common/act/StockSystemController.java"),
-  stockBatchAdminClient: read("stock-back-service/src/main/java/stock/back/service/market/client/StockBatchAdminClient.java"),
   stockBackReadme: read("stock-back-service/README.md"),
   stockAccountController: read("stock-back-service/src/main/java/stock/back/service/trading/act/AccountController.java"),
   stockUserController: read("stock-back-service/src/main/java/stock/back/service/user/act/StockUserController.java"),
@@ -101,15 +99,10 @@ const defaultSeedMarkers = [
   "stock-auto-001",
 ];
 
+const canonicalMysqlDdlPath = "stock-back-service/src/main/resources/db/ddl/stock_all.sql";
+const batchMysqlDdlDuplicatePath = "stock-batch-service/src/main/resources/db/ddl/stock_all.sql";
 const ddlPaths = [
-  "stock-back-service/src/main/resources/db/ddl/stock_all.sql",
-  "stock-batch-service/src/main/resources/db/ddl/stock_all.sql",
-  "stock-batch-service/src/main/resources/db/ddl/stock_h2.sql",
-];
-
-const fullSchemaDdlPaths = [
-  "stock-back-service/src/main/resources/db/ddl/stock_all.sql",
-  "stock-batch-service/src/main/resources/db/ddl/stock_all.sql",
+  canonicalMysqlDdlPath,
   "stock-batch-service/src/main/resources/db/ddl/stock_h2.sql",
 ];
 
@@ -129,6 +122,20 @@ const mainSourcePaths = [
   "stock-back-service/src/main",
   "stock-batch-service/src/main",
   "stock-front-service/app",
+];
+
+const orderSourcePaths = [
+  "stock-back-service/src/main/java/stock/back/service/trading",
+  "stock-batch-service/src/main/java/stock/batch/service/automarket",
+  "stock-batch-service/src/main/java/stock/batch/service/execution",
+  "stock-front-service/app/lib/orderSizing.ts",
+  "stock-front-service/app/lib/stock-api/trading.ts",
+  "stock-front-service/app/lib/validation/orderSchemas.ts",
+  "stock-front-service/app/supply-demand/orders",
+  "stock-front-service/app/supply-demand/OrderTicketPanel.tsx",
+  "stock-front-service/app/supply-demand/useSupplyDemandOrderActions.ts",
+  "stock-front-service/app/supply-demand/useSupplyDemandOrderTicketActions.ts",
+  "stock-front-service/app/types/stockTrading.ts",
 ];
 
 const schedulerDisableMarkers = [
@@ -304,19 +311,19 @@ const checks = [
   ],
   [
     "front corporate action type matches initial scope",
-    arraysEqual(parseTsUnion(files.frontTypes, "CorporateActionType"), initialCorporateActionTypes),
+    arraysEqual(parseTsUnion(files.frontMarketTypes, "CorporateActionType"), initialCorporateActionTypes),
   ],
   [
     "front order type keeps LIMIT and MARKET only",
-    arraysEqual(parseTsUnion(files.frontTypes, "OrderType"), allowedOrderTypes),
+    arraysEqual(parseTsUnion(files.frontTradingTypes, "OrderType"), allowedOrderTypes),
   ],
   [
     "front market type keeps two market families only",
-    arraysEqual(parseTsUnion(files.frontTypes, "MarketType"), allowedMarketTypes),
+    arraysEqual(parseTsUnion(files.frontMarketTypes, "MarketType"), allowedMarketTypes),
   ],
   [
     "front market session status keeps minimal states only",
-    arraysEqual(parseTsUnion(files.frontTypes, "MarketSessionStatus"), allowedMarketSessionStatuses),
+    arraysEqual(parseTsUnion(files.frontMarketTypes, "MarketSessionStatus"), allowedMarketSessionStatuses),
   ],
   [
     "admin corporate action choices cover current scope and exclude deferred actions",
@@ -367,13 +374,19 @@ const checks = [
     }),
   ],
   [
-    "DDL resources keep initial order and market scopes",
-    fullSchemaDdlPaths.every((path) => {
-      const ddl = read(path);
-      return includesAll(ddl, allowedOrderTypes.map((type) => `WHEN '${type}'`))
-        && includesAll(ddl, allowedMarketTypes.map((type) => `WHEN '${type}'`))
-        && includesAll(ddl, allowedMarketSessionStatuses.map((status) => `WHEN '${status}'`));
-    }),
+    "stock back owns the sole canonical MySQL business DDL",
+    existsSync(join(root, canonicalMysqlDdlPath))
+      && !existsSync(join(root, batchMysqlDdlDuplicatePath)),
+  ],
+  [
+    "canonical MySQL and batch H2 keep shared order and execution scopes",
+    ddlPaths.every((path) => includesAll(read(path), [
+      "chk_stock_order_type_valid CHECK (CASE `order_type` WHEN 'LIMIT' THEN 1 WHEN 'MARKET' THEN 1 ELSE 0 END = 1)",
+      "chk_stock_order_market_type_valid CHECK (CASE `market_type` WHEN 'VIRTUAL_PRICE' THEN 1 WHEN 'ORDER_BOOK' THEN 1 ELSE 0 END = 1)",
+      "chk_stock_execution_source_valid CHECK (CASE `source` WHEN 'VIRTUAL_MARKET_PRICE' THEN 1 WHEN 'INTERNAL_ORDER_BOOK' THEN 1 ELSE 0 END = 1)",
+      "chk_stock_virtual_market_status CHECK (CASE `market_status` WHEN 'OPEN' THEN 1 WHEN 'CLOSED' THEN 1 WHEN 'HALTED' THEN 1 WHEN 'CIRCUIT_BREAKER' THEN 1 ELSE 0 END = 1)",
+      "chk_stock_order_book_market_status CHECK (CASE `market_status` WHEN 'OPEN' THEN 1 WHEN 'CLOSED' THEN 1 WHEN 'HALTED' THEN 1 WHEN 'CIRCUIT_BREAKER' THEN 1 ELSE 0 END = 1)",
+    ])),
   ],
   [
     "stock batch uses separate Spring Batch 6 JDBC metadata schema",
@@ -415,8 +428,9 @@ const checks = [
       ]),
   ],
   [
-    "main sources do not contain deferred corporate actions or advanced order types",
-    !includesAny(readTree(mainSourcePaths), [...deferredCorporateActionTypes, ...deferredOrderFeatures]),
+    "main sources keep deferred corporate actions out and order surfaces keep advanced order types out",
+    !includesAny(readTree(mainSourcePaths), deferredCorporateActionTypes)
+      && !includesAny(readTree(orderSourcePaths), deferredOrderFeatures),
   ],
   [
     "stock-back-service does not own scheduler execution",
@@ -433,27 +447,20 @@ const checks = [
       && includesAll(files.stockBatchApplication, ["active: local-direct", "local-direct:"]),
   ],
   [
-    "stock back default batch client fallback matches local-direct batch port",
-    includesAll(files.stockBackApplication + files.stockBatchAdminClient, [
-      "base-url: ${STOCK_BATCH_API_BASE_URL:http://localhost:20481}",
-      "@Value(\"${stock.batch-client.base-url:http://localhost:20481}\")",
-    ])
-      && !includesAny(files.stockBackApplication + files.stockBatchAdminClient, [
-        "base-url: ${STOCK_BATCH_API_BASE_URL:http://localhost:30481}",
-        "@Value(\"${stock.batch-client.base-url:http://localhost:30481}\")",
-      ]),
+    "stock back does not keep a stock-batch HTTP client boundary",
+    !includesAny(
+      files.stockBackApplication
+        + files.stockBackLocalDirect
+        + files.stockBackDevApplication
+        + files.stockBackProdApplication
+        + readTree(["stock-back-service/src/main/java"]),
+      ["batch-client:", "STOCK_BATCH_API_BASE_URL", "STOCK_BATCH_INTERNAL_TOKEN", "/internal/stock-batch/v1/jobs"],
+    ),
   ],
   [
-    "stock back dev/prod require explicit stock-batch HTTP boundary",
+    "stock back dev/prod do not require a stock-batch HTTP boundary",
     [files.stockBackDevApplication, files.stockBackProdApplication].every((config) =>
-      includesAll(config, [
-        "base-url: ${STOCK_BATCH_API_BASE_URL}",
-        "internal-token: ${STOCK_BATCH_INTERNAL_TOKEN}",
-      ])
-        && !includesAny(config, [
-          "base-url: ${STOCK_BATCH_API_BASE_URL:",
-          "internal-token: ${STOCK_BATCH_INTERNAL_TOKEN:",
-        ]),
+      !includesAny(config, ["batch-client:", "STOCK_BATCH_API_BASE_URL", "STOCK_BATCH_INTERNAL_TOKEN"]),
     ),
   ],
   [
@@ -521,8 +528,6 @@ const checks = [
       "registerWithEureka: false",
       "fetchRegistry: false",
       "url: ${STOCK_AUTH_BASE_URL:http://localhost:9000}",
-      "base-url: ${STOCK_BATCH_API_BASE_URL:http://localhost:20481}",
-      "internal-token: ${STOCK_BATCH_INTERNAL_TOKEN:local-stock-batch-internal-token}",
       "allowed-origins: ${STOCK_CORS_ALLOWED_ORIGINS:http://localhost:3005,http://127.0.0.1:3005}",
     ])
       && includesAll(files.stockBatchLocalDirect, [
@@ -562,8 +567,10 @@ const checks = [
         "STOCK_BATCH_INTERNAL_TOKEN=local-stock-batch-internal-token",
       ])
       && includesAll(files.stockBackReadme, [
-        "http://localhost:20481",
-        "local-stock-batch-internal-token",
+        "| `local-direct` | `20480` |",
+        "`STOCK_AUTH_BASE_URL`",
+        "http://localhost:9000",
+        "stock-back은 stock-batch 내부 HTTP API를 호출하지 않고",
       ])
       && includesAll(files.stockSmoke, [
         'STOCK_BATCH_URL="${STOCK_BATCH_URL:-http://localhost:20481}"',
@@ -695,7 +702,7 @@ const checks = [
       && includesAll(files.stockBatchBuild, [
         "implementation project(':web-common-core')",
         "spring-boot-starter-web",
-        "spring-boot-starter-jdbc",
+        "spring-boot-starter-batch-jdbc",
         "spring-boot-starter-data-redis",
         "spring-cloud-starter-netflix-eureka-client",
       ])
