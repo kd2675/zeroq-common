@@ -248,7 +248,6 @@ npm run build
 ## Documentation Entry Points
 
 - Workspace guide: `AGENTS.md`
-- Sub-agent policy: `AGENTS_SUBAGENT_POLICY.md`
 - Command reference: `HELP.md`
 - Documentation index: `AGENTS_DOCUMENTATION_INDEX.md`
 - Semo more feature checklist: `semo-front-service/AGENTS_SEMO_MORE_FEATURE_CHECKLIST.md`

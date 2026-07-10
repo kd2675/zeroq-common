@@ -9,7 +9,6 @@
 | `README.md` | 워크스페이스 전체 구조와 실행 개요 |
 | `HELP.md` | 루트에서 자주 쓰는 명령 모음 |
 | `AGENTS.md` | 작업 규칙과 문서 유지 기준 |
-| `AGENTS_SUBAGENT_POLICY.md` | 작업 지시자 / 중간관리자 / 서브에이전트 오케스트레이션과 단계별 실행 규칙 |
 
 ## Common / Infrastructure
 
