@@ -230,7 +230,6 @@ batch_pid="$!"
 wait_for_contains "stock-batch started" "${STOCK_BATCH_URL}/internal/stock-batch/v1/system/status" "stock-batch-service"
 
 check_contains "stock-batch market data job" "POST" "${STOCK_BATCH_URL}/internal/stock-batch/v1/jobs/market-data/refresh" "\"processedCount\":1"
-check_contains "stock-batch virtual price execution job" "POST" "${STOCK_BATCH_URL}/internal/stock-batch/v1/jobs/virtual-price-execution/run" "\"processedCount\":1"
 check_contains "stock-batch portfolio settlement job" "POST" "${STOCK_BATCH_URL}/internal/stock-batch/v1/jobs/portfolio-settlement/run" "\"processedCount\":3"
 
 if kill -0 "${batch_pid}" >/dev/null 2>&1; then

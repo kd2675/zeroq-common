@@ -133,7 +133,6 @@ const mainSourcePaths = [
 
 const schedulerDisableMarkers = [
   "market-data:\n      enabled: false",
-  "virtual-price-execution:\n      enabled: false",
   "order-book-execution:\n      enabled: false",
   "corporate-actions:\n      enabled: false",
   "auto-market:\n      enabled: false",
@@ -205,7 +204,6 @@ const stockBatchApiSurface = [
   '@GetMapping("/status")',
   '@RequestMapping("/internal/stock-batch/v1/jobs")',
   '@PostMapping("/market-data/refresh")',
-  '@PostMapping("/virtual-price-execution/run")',
   '@PostMapping("/order-book-execution/run")',
   '@PostMapping("/auto-participant-cash-flow/run")',
   '@GetMapping("/auto-participant-cash-flow/status")',
@@ -275,7 +273,6 @@ const stockBackApiSurfaceRoutes = [
 const stockBatchApiSurfaceRoutes = [
   "GET /internal/stock-batch/v1/system/status",
   "POST /internal/stock-batch/v1/jobs/market-data/refresh",
-  "POST /internal/stock-batch/v1/jobs/virtual-price-execution/run",
   "POST /internal/stock-batch/v1/jobs/order-book-execution/run",
   "POST /internal/stock-batch/v1/jobs/auto-participant-cash-flow/run",
   "GET /internal/stock-batch/v1/jobs/auto-participant-cash-flow/status",

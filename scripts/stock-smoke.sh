@@ -224,7 +224,6 @@ check_contains "stock-batch status direct" "GET" "${STOCK_BATCH_URL}/internal/st
 
 if [[ "${STOCK_SMOKE_RUN_BATCH_JOBS}" == "true" ]]; then
   check_contains "stock-batch market data job direct" "POST" "${STOCK_BATCH_URL}/internal/stock-batch/v1/jobs/market-data/refresh" "COMPLETED"
-  check_contains "stock-batch virtual price execution job direct" "POST" "${STOCK_BATCH_URL}/internal/stock-batch/v1/jobs/virtual-price-execution/run" "COMPLETED"
   check_contains "stock-batch order book execution job direct" "POST" "${STOCK_BATCH_URL}/internal/stock-batch/v1/jobs/order-book-execution/run" "COMPLETED"
   check_contains "stock-batch portfolio settlement job direct" "POST" "${STOCK_BATCH_URL}/internal/stock-batch/v1/jobs/portfolio-settlement/run" "COMPLETED"
 fi
@@ -232,7 +231,6 @@ fi
 if [[ "${STOCK_SMOKE_RUN_GATEWAY_BATCH_JOBS}" == "true" ]]; then
   for job_path in \
     "/internal/stock-batch/v1/jobs/market-data/refresh" \
-    "/internal/stock-batch/v1/jobs/virtual-price-execution/run" \
     "/internal/stock-batch/v1/jobs/order-book-execution/run" \
     "/internal/stock-batch/v1/jobs/portfolio-settlement/run"; do
     gateway_headers=()
