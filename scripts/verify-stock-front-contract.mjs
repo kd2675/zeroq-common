@@ -389,12 +389,15 @@ const checks = [
     "DB 런타임은 ON이지만 배치 서버 설정이 OFF라 자동 실행은 아직 스킵됩니다.",
     "배치 서버 설정이 OFF라 DB ON이어도 자동 실행하지 않습니다.",
   ])],
-  ["auto participant cash flow manual run stays inside shared batch runtime controls", includesAll(files.stockApi + files.types + files.supplyDemandAdmin, [
+  ["auto participant cash flow manual run stays inside shared batch runtime controls", includesAll(files.stockApi + files.types + files.supplyDemandAdmin + files.queryLayer, [
     "StockBatchJobRun",
     "runAutoParticipantCashFlow",
     "/api/stock/v1/markets/auto-market/cash-flow/run",
     "lastCashFlowRun",
-    "setLastCashFlowRun(cashFlowRunResult.data)",
+    "latestManualCashFlowRunQueryOptions",
+    'status === "QUEUED" || status === "PROCESSING"',
+    "setLatestManualCashFlowRunQueryData(queryClient, cashFlowRunResult.data)",
+    "invalidateLatestManualCashFlowRunQuery(queryClient)",
     "invalidateBatchRuntimeControlQueries(queryClient)",
     "resolveBatchManualAction",
     'jobName === "auto-participant-cash-flow"',
