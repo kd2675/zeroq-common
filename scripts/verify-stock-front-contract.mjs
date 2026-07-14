@@ -14,6 +14,10 @@ const files = {
   simulationTimeBadge: read("app/components/SimulationTimeBadge.tsx"),
   simulationTime: read("app/lib/simulationTime.ts"),
   home: read("app/page.tsx"),
+  publicNavigation: read("app/navigation/publicNavigation.ts"),
+  adminNavigation: read("app/navigation/adminNavigation.ts"),
+  nextConfig: read("next.config.ts"),
+  canonicalAdminPage: read("app/admin/[[...slug]]/page.tsx"),
   virtualPrice: readSourceText("app/virtual-price"),
   portfolio: readSourceText("app/portfolio"),
   reports: readSourceText("app/reports"),
@@ -149,12 +153,18 @@ const checks = [
     "[...(options?.userKeys ?? [])].sort(),",
   ]) && !files.queryLayer.includes("[...(options?.userKeys ?? [])].sort().join(\",\")")],
   ["root page routes to primary stock pages", includesAll(files.home, [
-    "/supply-demand",
+    "/trade",
     "/portfolio",
-    "/supply-demand/admin/accounts/participants",
+    "/admin/participants/list",
     "자동참여자 수익률로 보는 모의 주식시장",
     "내 주식",
     "수요와 공급 주문 체결",
+  ]) && includesAll(files.publicNavigation, [
+    'href: "/trade"',
+    'href: "/orders"',
+    'href: "/portfolio"',
+    'href: "/research"',
+    'href: "/corporate-actions"',
   ])],
   ["frontend uses configured API base", files.apiLayer.includes("STOCK_CLIENT_ID") && files.apiLayer.includes("STOCK_API_BASE")],
   ["frontend does not call stock-batch internal API directly", !includesAny(frontSourceText, [
@@ -347,14 +357,15 @@ const checks = [
   ["auto participant profile config fields are wired", autoParticipantProfileConfigFields.every((field) => includesAll(files.types + files.stockApi + files.supplyDemandAdmin, [field]))],
   ["listing auto institutional policy fields are wired", listingAutoInstitutionPolicyFields.every((field) => includesAll(files.types + files.stockApi + files.supplyDemandAdmin, [field]))],
   ["automation profile tab renders profile config panel", includesAll(files.supplyDemandAdmin + files.supplyDemandAdminAutomationSection, [
-    'href: "/supply-demand/admin/automation"',
-    'label: "프로필"',
-    'if (activeSection === "profiles")',
+    'if (activeSection === "participants-profiles")',
     "<AdminProfilesSection",
     "profileConfigs={profileConfigs}",
     "editingProfileType={editingProfileType}",
     "selectedProfileConfig={selectedProfileConfig}",
     "onSubmit={onSubmitProfileConfig}",
+  ]) && includesAll(files.adminNavigation, [
+    'href: "/admin/participants/profiles"',
+    'label: "프로필 정책"',
   ]) && !files.supplyDemandAdminAccountsSection.includes("<AdminProfilesSection")],
   ["admin auto market symbol defaults explain operational fields", includesAll(files.supplyDemandAdmin, [
     "종목별 자동장 압력 분포",
@@ -365,7 +376,7 @@ const checks = [
     "미체결 호가 TTL(초)",
     "stock_auto_market_config",
     "실제 주문은 06·09·12·15시 주 압력 60%, 30분 보조 압력 40%, 참여자별 전략, 심리 프로필, 보고서 점수, 계좌 상태를 함께 계산해 생성됩니다.",
-    "참여자·종목별 설정이 없으면 중립 활동도 5를 사용합니다.",
+    "설정이 없으면 5이며 최신 보고서가 있으면 프로필 뉴스 민감도만큼 유효 강도가 보정됩니다.",
     "예약 현금/수량을 돌려줍니다.",
   ])],
   ["admin cash ledger supports paged full view", includesAll(files.types + files.stockApi + files.supplyDemandAdmin, [
@@ -416,8 +427,7 @@ const checks = [
   ["admin account tab shows profile-level portfolio overview", includesAll(files.supplyDemandAdmin, [
     "ParticipantProfileOverviewPanel",
     "resolveParticipantProfileOverviewSummaries",
-    'href: "/supply-demand/admin/accounts/profiles"',
-    "activeAdminSection === \"profile-overview\"",
+    "activeAdminSection === \"participants-overview\"",
     "프로필별 자동참가자 현황",
     "ProfileMiniMetric",
     "ProfileOverviewInfoItem",
@@ -430,10 +440,10 @@ const checks = [
     "enabledStrategyCount",
     "lastOrderAt",
     "lastExecutionAt",
-  ]) && includesAll(files.supplyDemandAdminAccountsProfiles, [
-    "import AdminPageClient from \"@/app/supply-demand/admin/AdminPageClient\"",
-    "export default AdminPageClient",
-  ]) && !files.supplyDemandAdmin.includes('activeAdminSection === "profile-overview"\n      || activeAdminSection === "profiles"')],
+  ]) && includesAll(files.adminNavigation, [
+    'href: "/admin/participants/overview"',
+    'section: "participants-overview"',
+  ])],
   ["profile-level overview query does not auto poll", includesAll(files.stockAdminQueries + files.supplyDemandAdmin, [
     "autoParticipantProfileOverviewsQueryOptions",
     "refetchInterval: options.refetchIntervalMs ?? false",
@@ -468,43 +478,28 @@ const checks = [
     "usePathname",
     "resolveAdminTabFromPath",
     "resolveAdminSectionFromPath",
-    "AdminSubTabNav",
-    'href: "/supply-demand/admin/market"',
-    'href: "/supply-demand/admin/accounts"',
-    'href: "/supply-demand/admin/accounts/salary"',
-    'href: "/supply-demand/admin/accounts/profiles"',
-    'href: "/supply-demand/admin/accounts/participants"',
-    'href: "/supply-demand/admin/automation"',
-    'href: "/supply-demand/admin/automation/symbols"',
-    'href: "/supply-demand/admin/automation/listing-auto"',
-    'href: "/supply-demand/admin/automation/batch"',
-    'href: "/supply-demand/admin/events"',
+    "AdminSidebarNavigation",
     "filterAutoParticipants",
     "selectedAutoParticipantSymbolConfigs",
     "visibleParticipantUserKeys",
     "참여자 검색",
     "aria-current",
-  ]) && !files.supplyDemandAdmin.includes("autoMarketSummaryQuery.data ?? status") && includesAll(
-    files.supplyDemandAdminMarket
-      + files.supplyDemandAdminAccounts
-      + files.supplyDemandAdminAccountsSalary
-      + files.supplyDemandAdminAccountsProfiles
-      + files.supplyDemandAdminAccountsParticipants
-      + files.supplyDemandAdminAutomation
-      + files.supplyDemandAdminAutomationSymbols
-      + files.supplyDemandAdminAutomationListingAuto
-      + files.supplyDemandAdminAutomationBatch
-      + files.supplyDemandAdminEvents,
-    [
+  ]) && includesAll(files.adminNavigation, [
+    'href: "/admin/market/instruments"',
+    'href: "/admin/funds/payroll"',
+    'href: "/admin/participants/overview"',
+    'href: "/admin/participants/list"',
+    'href: "/admin/participants/profiles"',
+    'href: "/admin/participants/symbols"',
+    'href: "/admin/market/liquidity"',
+    'href: "/admin/system/jobs"',
+    'href: "/admin/corporate/actions"',
+  ]) && !files.supplyDemandAdmin.includes("autoMarketSummaryQuery.data ?? status") && includesAll(files.canonicalAdminPage, [
     "import AdminPageClient from \"@/app/supply-demand/admin/AdminPageClient\"",
-    "export default AdminPageClient",
-    ],
-  ) && includesAll(files.supplyDemandAdminAccountsSalary + files.supplyDemandAdminAccountsProfiles + files.supplyDemandAdminAccountsParticipants + files.supplyDemandAdminAutomationSymbols + files.supplyDemandAdminAutomationListingAuto + files.supplyDemandAdminAutomationStrategies + files.supplyDemandAdminAutomationBatch, [
-    "import AdminPageClient from \"@/app/supply-demand/admin/AdminPageClient\"",
-    "export default AdminPageClient",
-  ]) && includesAll(files.supplyDemandAdminLegacyParticipants + files.supplyDemandAdminAutomationStrategies, [
-    "redirect",
-    "/supply-demand/admin/accounts/participants",
+    "<AdminPageClient />",
+  ]) && includesAll(files.nextConfig, [
+    'source: "/supply-demand/admin"',
+    'destination: "/admin"',
   ])],
   ["admin shows salary recipients from participant overview and recurring policy", includesAll(files.stockApi + files.types + files.supplyDemandAdmin, [
     "AutoParticipantOverview",
@@ -512,7 +507,7 @@ const checks = [
     "autoParticipantOverviewsQueryOptions",
     "salaryEligibleParticipantCount",
     "includeSalaryEligibility",
-    "activeAdminSection === \"salary\"",
+    "activeAdminSection === \"funds-payroll\"",
     "SalaryEligibilityPanel",
     "resolveSalaryEligibilityRows",
     "월급 지급 대상",
