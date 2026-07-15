@@ -13,6 +13,7 @@ const initialCorporateActionTypes = [
   "STOCK_DIVIDEND",
   "DELISTING",
 ];
+const adminCorporateActionTypes = initialCorporateActionTypes.filter((type) => type !== "INITIAL_ISSUE");
 
 const deferredCorporateActionTypes = [
   "SPECIAL_DIVIDEND",
@@ -328,8 +329,10 @@ const checks = [
     arraysEqual(parseTsUnion(files.frontMarketTypes, "MarketSessionStatus"), allowedMarketSessionStatuses),
   ],
   [
-    "admin corporate action choices cover current scope and exclude deferred actions",
-    includesAll(files.frontAdmin, initialCorporateActionTypes.map((type) => `value="${type}"`))
+    "admin corporate action choices cover manually registered scope and exclude automatic or deferred actions",
+    includesAll(files.frontAdmin, adminCorporateActionTypes.map((type) => `value="${type}"`))
+      && files.frontAdmin.includes("INITIAL_ISSUE 원장")
+      && !files.frontAdmin.includes('value="INITIAL_ISSUE"')
       && !includesAny(files.frontAdmin, deferredCorporateActionTypes),
   ],
   [
