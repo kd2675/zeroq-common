@@ -29,6 +29,7 @@ const files = {
   corporateActionForm: read("app/supply-demand/admin/AdminCorporateActionFormPanel.tsx"),
   corporateActionPayload: read("app/supply-demand/admin/AdminCorporateActionPayloadHelpers.ts"),
   supplyDemandAdminConstants: read("app/supply-demand/admin/AdminConstants.ts"),
+  autoParticipantMutationPayload: read("app/supply-demand/admin/AdminAutoParticipantMutationPayloadHelpers.ts"),
   supplyDemandAdminAccountsSection: read("app/supply-demand/admin/AdminAccountsSection.tsx"),
   supplyDemandAdminAutomationSection: read("app/supply-demand/admin/AdminAutomationSection.tsx"),
   login: readSourceText("app/login"),
@@ -106,6 +107,10 @@ const supplyDemandBatchJobNames = [
   "portfolio-settlement",
 ];
 const frontBatchRuntimeLabels = parseObjectKeys(files.supplyDemandAdminConstants, "BATCH_JOB_RUNTIME_LABELS");
+const recurringCashIntervalOptions = parseOptionValues(
+  files.supplyDemandAdminConstants,
+  "RECURRING_CASH_INTERVAL_UNIT_OPTIONS",
+);
 
 const checks = [
   ["strict TypeScript is enabled", files.tsconfig.compilerOptions?.strict === true],
@@ -485,6 +490,22 @@ const checks = [
     "refetchIntervalMs: false",
     "onRefreshProfileOverviews",
   ])],
+  ["EOD operations polling stays page-scoped and background-disabled", includesAll(files.stockAdminQueries + files.queryLayer + files.supplyDemandAdmin, [
+    "eodOperationsOverviewQueryOptions",
+    "ADMIN_EOD_REFETCH_MS = 15_000",
+    'activeAdminSection === "system-eod"',
+    "refetchIntervalInBackground: false",
+    "refetchIntervalInBackground: config.refetchIntervalInBackground",
+  ])],
+  ["failed EOD phase retry stays current-cycle and control-plane-only", includesAll(files.stockApi + files.types + files.queryLayer + files.supplyDemandAdmin, [
+    "EodPhaseRetryResult",
+    "retryFailedEodPhase",
+    "/api/stock/v1/markets/batch-jobs/eod/cycles/",
+    'cycle?.status === "FAILED"',
+    "현재 단계 재시도",
+    "invalidateEodOperationsOverviewQuery",
+    "다음 coordinator 판정에서 실행됩니다.",
+  ])],
   ["batch runtime control APIs are wired", includesAll(files.stockApi + files.types + files.supplyDemandAdmin, [
     "BatchJobRuntimeStatus",
     "getBatchJobRuntimeControls",
@@ -549,6 +570,9 @@ const checks = [
     "ACTIVE 계좌",
     "개별 미지급",
   ])],
+  ["admin recurring cash settings allow day or longer intervals only",
+    sameSet(recurringCashIntervalOptions, ["DAY", "MONTH", "YEAR"])
+      && files.autoParticipantMutationPayload.includes('z.enum(["DAY", "MONTH", "YEAR"])')],
   ["batch runtime labels cover supply-demand batch jobs only", sameSet(supplyDemandBatchJobNames, frontBatchRuntimeLabels)
     && files.supplyDemandAdmin.includes("SUPPLY_DEMAND_BATCH_JOB_NAMES")
     && !files.supplyDemandAdmin.includes('"virtual-price-execution":')
@@ -694,6 +718,16 @@ function parseObjectKeys(text, objectName) {
     throw new Error(`${objectName} object not found`);
   }
   return [...match[1].matchAll(/"([^"]+)":\s*\{/g)]
+    .map((matchItem) => matchItem[1])
+    .sort();
+}
+
+function parseOptionValues(text, arrayName) {
+  const match = text.match(new RegExp(`(?:export\\s+)?const\\s+${arrayName}[\\s\\S]*?=\\s*\\[([\\s\\S]*?)\\n\\];`));
+  if (!match) {
+    throw new Error(`${arrayName} options not found`);
+  }
+  return [...match[1].matchAll(/value:\s*"([^"]+)"/g)]
     .map((matchItem) => matchItem[1])
     .sort();
 }
