@@ -85,6 +85,10 @@ const listingAutoInstitutionPolicyFields = [
   "targetHoldingQuantity",
   "inventoryBandQuantity",
   "목표 보유 수량 맞춤",
+  "전체 발행량 대비 목표 보유 비율",
+  "MAX_LISTING_AUTO_NEW_ORDERS_PER_SIDE_PER_RUN",
+  "필요 주문 조각",
+  "위·아래 무작위(비교차)",
   "maximumSymmetricBand",
   "setPositionSide(\"TWO_SIDED\")",
   "보유 허용 밴드",
@@ -111,6 +115,17 @@ const recurringCashIntervalOptions = parseOptionValues(
   files.supplyDemandAdminConstants,
   "RECURRING_CASH_INTERVAL_UNIT_OPTIONS",
 );
+const listingAutoFragmentLimits = [
+  parseIntegerConstant(
+    readWorkspace("stock-batch-service/src/main/java/stock/batch/service/automarket/biz/ListingAutoAccountOrderService.java"),
+    "MAX_NEW_ORDERS_PER_SIDE_PER_RUN",
+  ),
+  parseIntegerConstant(
+    readWorkspace("stock-back-service/src/main/java/stock/back/service/market/biz/ListingAutoAccountConfigValidator.java"),
+    "MAX_NEW_ORDERS_PER_SIDE_PER_RUN",
+  ),
+  parseIntegerConstant(files.supplyDemandAdminConstants, "MAX_LISTING_AUTO_NEW_ORDERS_PER_SIDE_PER_RUN"),
+];
 
 const checks = [
   ["strict TypeScript is enabled", files.tsconfig.compilerOptions?.strict === true],
@@ -373,6 +388,8 @@ const checks = [
   ])],
   ["auto participant profile config fields are wired", autoParticipantProfileConfigFields.every((field) => includesAll(files.types + files.stockApi + files.supplyDemandAdmin, [field]))],
   ["listing auto institutional policy fields are wired", listingAutoInstitutionPolicyFields.every((field) => includesAll(files.types + files.stockApi + files.supplyDemandAdmin, [field]))],
+  ["listing auto fragment limit matches batch, back, and front", listingAutoFragmentLimits.every((value) => value > 0)
+    && new Set(listingAutoFragmentLimits).size === 1],
   ["automation profile tab renders profile config panel", includesAll(files.supplyDemandAdmin + files.supplyDemandAdminAutomationSection, [
     'if (activeSection === "participants-profiles")',
     "<AdminProfilesSection",
@@ -390,11 +407,15 @@ const checks = [
     "자동 주문 생성",
     "주·보조 분포 편향(-100~100)",
     "주 랜덤 일일 적용 횟수",
+    "당일 주 랜덤 총",
+    "dailyApplicationCount",
+    "preparedRegimeSlotCount",
     "예상 평균",
     "1회 주문 최대 수량",
     "미체결 호가 TTL(초)",
     "stock_auto_market_config",
-    "주 압력은 06시와 가중치로 선택된 추가 슬롯에서 하루 1~4회 갱신되고, 30분 보조 압력과 60:40으로 합성됩니다.",
+    "주 압력은 06시와 가중치로 선택된 추가 슬롯에서 하루 1~4회 갱신되고, 30분 보조 압력과 70:30으로 합성됩니다.",
+    "return clampPressure(primary * 0.7 + secondary * 0.3);",
     "설정이 없으면 5이며 최신 보고서가 있으면 프로필 뉴스 민감도만큼 유효 강도가 보정됩니다.",
     "예약 현금/수량을 돌려줍니다.",
   ])],
@@ -417,13 +438,16 @@ const checks = [
     "holdingQuantity: number | null",
     "reservedSellQuantity: number | null",
     "availableHoldingQuantity: number | null",
+    "pendingSubscriptionAsset: number",
     "가용 현금",
-    "매수·청약 예약금",
+    "주문·청약 대기금",
+    "청약 대기자산",
     "보유 주식 평가액",
     "총 보유량",
     "가용 보유량",
     "총자산 구성 비중",
     "ADMIN_ASSET_HISTORY_METRIC_KEYS",
+    "PENDING_SUBSCRIPTION_ASSET",
     "HOLDING_QUANTITY",
     "AVAILABLE_HOLDING_QUANTITY",
     "RESERVED_SELL_QUANTITY",
@@ -662,6 +686,15 @@ console.log("stock front contract passed");
 
 function read(relativePath) {
   return readFileSync(join(frontRoot, relativePath), "utf8");
+}
+
+function readWorkspace(relativePath) {
+  return readFileSync(join(root, relativePath), "utf8");
+}
+
+function parseIntegerConstant(source, constantName) {
+  const match = source.match(new RegExp(`${constantName}\\s*=\\s*(\\d+)`));
+  return match ? Number(match[1]) : Number.NaN;
 }
 
 function readSourceText(relativePath) {
