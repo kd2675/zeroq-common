@@ -9,7 +9,10 @@ const backProfileConfigDefaultsText = read("stock-back-service/src/main/java/sto
 const batchRuntimeTestText = [
   read("stock-batch-service/src/test/java/stock/batch/service/automarket/biz/AutoMarketServiceTest.java"),
   read("stock-batch-service/src/test/java/stock/batch/service/automarket/biz/AutoParticipantCashFlowServiceTest.java"),
+  read("stock-batch-service/src/test/java/stock/batch/service/automarket/biz/AutoParticipantOrderServiceTest.java"),
+  read("stock-batch-service/src/test/java/stock/batch/service/automarket/profile/AutoProfileSideSelectionTest.java"),
 ].join("\n");
+const abstractProfileBehaviorText = read("stock-batch-service/src/main/java/stock/batch/service/automarket/profile/AbstractAutoProfileBehavior.java");
 
 const sources = {
   batchEnum: parseJavaEnum(read("stock-batch-service/src/main/java/stock/batch/service/batch/automarket/model/AutoParticipantProfileType.java")),
@@ -64,6 +67,11 @@ if (missingBehaviorMarkers.length) {
   process.exit(1);
 }
 console.log("PASS profileBehaviorTests cover profile behavior");
+if (abstractProfileBehaviorText.includes("policy.recurringDepositAmount()")) {
+  console.log("FAIL recurring deposit metadata is coupled to common trading bias");
+  process.exit(1);
+}
+console.log("PASS recurring deposit metadata is separated from common trading bias");
 console.log(`stock auto profile contract passed: ${canonical.length} profiles`);
 
 function read(relativePath) {
@@ -138,7 +146,7 @@ function parseBatchPolicyProfiles(text) {
 
 function parseBatchProfileConfigDefaults(text) {
   const defaults = new Map();
-  for (const match of text.matchAll(/super\(AutoParticipantProfileType\.([A-Z_]+),\s*new ProfilePolicy\(([\s\S]*?)\)\);/g)) {
+  for (const match of text.matchAll(/super\(AutoParticipantProfileType\.([A-Z_]+),\s*new ProfilePolicy\(([\s\S]*?)\)\.withPricePressureSensitivity\(([0-9.]+)\)\);/g)) {
     const args = splitArguments(match[2]);
     defaults.set(match[1], {
       newsWeight: parseJavaValue(args[0], text),
@@ -151,6 +159,7 @@ function parseBatchProfileConfigDefaults(text) {
       profitTakingWeight: parseJavaValue(args[7], text),
       orderMultiplier: parseJavaValue(args[8], text),
       aggressionMultiplier: parseJavaValue(args[9], text),
+      pricePressureSensitivity: Number(match[3]),
       orderTtlMultiplier: parseJavaValue(args[10], text),
       noiseWeight: parseJavaValue(args[11], text),
       quantityMultiplier: parseJavaValue(args[12], text),
@@ -168,6 +177,7 @@ function parseBatchProfileConfigDefaults(text) {
 
 function parseBackProfileConfigDefaults(text) {
   const defaults = new Map();
+  const pricePressureSensitivities = parseBackPricePressureSensitivities(text);
   for (const line of text.split("\n")) {
     const match = line.match(/defaults\.put\(AutoParticipantProfileType\.([A-Z_]+), profileDefaults\((.*)\)\);/);
     if (!match) {
@@ -187,6 +197,7 @@ function parseBackProfileConfigDefaults(text) {
       dipBuyWeight: parseJavaValue(args[9], text),
       orderMultiplier: parseJavaValue(args[10], text),
       aggressionMultiplier: parseJavaValue(args[11], text),
+      pricePressureSensitivity: pricePressureSensitivities.get(match[1]),
       orderTtlMultiplier: parseJavaValue(args[12], text),
       quantityMultiplier: parseJavaValue(args[13], text),
       holdingPatienceWeight: parseJavaValue(args[14], text),
@@ -198,6 +209,20 @@ function parseBackProfileConfigDefaults(text) {
     });
   }
   return defaults;
+}
+
+function parseBackPricePressureSensitivities(text) {
+  const method = text.match(/private static double defaultPricePressureSensitivity[\s\S]*?return switch \(profileType\) \{([\s\S]*?)\n\s*};/);
+  if (!method) {
+    throw new Error("defaultPricePressureSensitivity switch not found");
+  }
+  const values = new Map();
+  for (const match of method[1].matchAll(/case ([A-Z_, ]+) -> ([0-9.]+);/g)) {
+    for (const profile of match[1].split(",").map((value) => value.trim())) {
+      values.set(profile, Number(match[2]));
+    }
+  }
+  return values;
 }
 
 function compareProfileConfigDefaults(batchDefaults, backDefaults, profiles) {
@@ -214,6 +239,7 @@ function compareProfileConfigDefaults(batchDefaults, backDefaults, profiles) {
     "dipBuyWeight",
     "orderMultiplier",
     "aggressionMultiplier",
+    "pricePressureSensitivity",
     "orderTtlMultiplier",
     "quantityMultiplier",
     "holdingPatienceWeight",
@@ -354,7 +380,7 @@ function parseRuntimeTestProfiles(text) {
 function profileBehaviorMarkers() {
   return {
     NEWS_REACTIVE: [
-      /effectiveIntensity_newsReactiveProfile_respondsMoreStronglyToReportScore/,
+      /activityLevel_newsReactiveProfileCannotIncreaseOrderActivity/,
       /runAutoMarketStep_newsReactiveBuysOnStrongPositiveReport/,
       /runAutoMarketStep_newsReactiveSellsOnStrongNegativeReport/,
     ],
@@ -369,6 +395,7 @@ function profileBehaviorMarkers() {
     ],
     LOSS_AVERSE: [
       /buyBias_lossAverseProfile_prefersHoldingOrBuyingWhenPositionIsLosing/,
+      /lossAverse_losingPosition_staysIdleInsteadOfAveragingDown/,
       /runAutoMarketStep_lossAverseLosingPositionAndNoCashDoesNotForceSell/,
     ],
     OVERCONFIDENT: [
@@ -383,10 +410,13 @@ function profileBehaviorMarkers() {
     ],
     MARKET_MAKER: [
       /buyBias_herdFollowerFollowsBuyCrowdAndMarketMakerLeansAgainstIt/,
+      /marketMaker_lowStockAllocation_keepsBuyingUntilInventoryBand/,
+      /marketMaker_highStockAllocation_selectsSell/,
+      /marketMaker_balancedStockAllocation_alternatesSides/,
       /runAutoMarketStep_marketMakerPlacesTwoSidedQuotesWhenCashAndInventoryExist/,
     ],
     NOISE_TRADER: [
-      /buyBias_paydayAccumulatorKeepsHigherBuyBiasThanNoiseTraderOnNeutralSignal/,
+      /buyBias_recurringFundingMetadataDoesNotChangeTradingPreference/,
       /runAutoMarketStep_noiseTraderWithoutCashOrHoldingCannotCreateOrder/,
     ],
     VALUE_ANCHOR: [
@@ -414,7 +444,7 @@ function profileBehaviorMarkers() {
       /runAutoMarketStep_longTermHolderLargeGainDoesNotTakeProfitImmediately/,
     ],
     PAYDAY_ACCUMULATOR: [
-      /buyBias_paydayAccumulatorKeepsHigherBuyBiasThanNoiseTraderOnNeutralSignal/,
+      /paydayAccumulatorBehavior_canTakeProfitAfterAccumulatingWinningPosition/,
       /fundRecurringCash_paydayAccumulatorWithoutDirectRecurringCashSettingDoesNotDeposit/,
       /runAutoMarketStep_paydayAccumulatorDepositsAndBuysWhenNoHoldingExists/,
       /fundRecurringCash_paydayAccumulatorDepositsOnlyAfterConfiguredInterval/,
@@ -436,6 +466,8 @@ function profileBehaviorMarkers() {
     ],
     STOP_LOSS_TRADER: [
       /buyBias_stopLossTraderSellsLosingPositionMoreThanLossAverseProfile/,
+      /stopLoss_smallLoss_staysIdleUntilThreshold/,
+      /stopLoss_thresholdLoss_selectsSell/,
       /runAutoMarketStep_stopLossTraderSellsLosingPosition/,
     ],
     FOMO_BUYER: [
@@ -463,12 +495,12 @@ function profileBehaviorMarkers() {
       /runAutoMarketStep_cashDefensiveStaysIdleOnNeutralSignal/,
     ],
     WHALE: [
-      /quantityUpperBound_whaleUsesLargerSizeThanSmallDiversifier/,
-      /runAutoMarketStep_whaleAndSmallDiversifierUseDifferentRuntimeOrderSizes/,
+      /orderSizing_smallDiversifierUsesMoreOrdersButSmallerSizeThanWhale/,
+      /runAutoMarketStep_whaleAndSmallDiversifierStayWithinConfiguredHardLimit/,
     ],
     SMALL_DIVERSIFIER: [
       /orderSizing_smallDiversifierUsesMoreOrdersButSmallerSizeThanWhale/,
-      /runAutoMarketStep_whaleAndSmallDiversifierUseDifferentRuntimeOrderSizes/,
+      /runAutoMarketStep_whaleAndSmallDiversifierStayWithinConfiguredHardLimit/,
     ],
     OBSERVER: [
       /orderCount_observerAndLiquidityAvoidantCanStayIdleOnNeutralSignal/,

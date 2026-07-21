@@ -87,10 +87,12 @@ const listingAutoInstitutionPolicyFields = [
   "목표 보유 수량 맞춤",
   "전체 발행량 대비 목표 보유 비율",
   "MAX_LISTING_AUTO_NEW_ORDERS_PER_SIDE_PER_RUN",
-  "필요 주문 조각",
+  "신규 보충 매수",
   "위·아래 무작위",
   "동일 계좌끼리의 실제 자기체결만 체결 엔진이 차단",
-  "maximumSymmetricBand",
+  "calculateListingAutoTargetFit",
+  "대칭 가능 재고 범위의 30%",
+  "TTL·분산 틱·가격 방향은 변경하지 않습니다",
   "setPositionSide(\"TWO_SIDED\")",
   "보유 허용 밴드",
   "유효 호가",
@@ -126,6 +128,10 @@ const listingAutoFragmentLimits = [
     "MAX_NEW_ORDERS_PER_SIDE_PER_RUN",
   ),
   parseIntegerConstant(files.supplyDemandAdminConstants, "MAX_LISTING_AUTO_NEW_ORDERS_PER_SIDE_PER_RUN"),
+  parseIntegerConstant(
+    read("app/supply-demand/admin/listingAutoTargetFit.ts"),
+    "MAX_LISTING_AUTO_NEW_ORDERS_PER_SIDE_PER_RUN",
+  ),
 ];
 
 const checks = [
@@ -417,7 +423,7 @@ const checks = [
     "stock_auto_market_config",
     "주 압력은 06시와 가중치로 선택된 추가 슬롯에서 하루 1~4회 갱신되고, 30분 보조 압력과 70:30으로 합성됩니다.",
     "return clampPressure(primary * 0.7 + secondary * 0.3);",
-    "설정이 없으면 5이며 최신 보고서가 있으면 프로필 뉴스 민감도만큼 유효 강도가 보정됩니다.",
+    "설정이 없으면 5이며 보고서 점수로 변경되지 않습니다.",
     "예약 현금/수량을 돌려줍니다.",
   ])],
   ["admin cash ledger supports paged full view", includesAll(files.types + files.stockApi + files.supplyDemandAdmin, [
