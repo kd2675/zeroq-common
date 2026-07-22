@@ -28,7 +28,11 @@ const files = {
   corporateActionDraftState: read("app/supply-demand/admin/useAdminStockEventDraftState.ts"),
   corporateActionForm: read("app/supply-demand/admin/AdminCorporateActionFormPanel.tsx"),
   corporateActionPayload: read("app/supply-demand/admin/AdminCorporateActionPayloadHelpers.ts"),
+  corporateActionsPage: read("app/corporate-actions/CorporateActionsClient.tsx"),
   supplyDemandAdminConstants: read("app/supply-demand/admin/AdminConstants.ts"),
+  autoParticipantManagement: read("app/supply-demand/admin/AdminAutoParticipantManagementPanel.tsx"),
+  autoParticipantEdit: read("app/supply-demand/admin/AdminAutoParticipantEditPanel.tsx"),
+  adminAccountsSection: read("app/supply-demand/admin/AdminAccountsSection.tsx"),
   autoParticipantMutationPayload: read("app/supply-demand/admin/AdminAutoParticipantMutationPayloadHelpers.ts"),
   supplyDemandAdminAccountsSection: read("app/supply-demand/admin/AdminAccountsSection.tsx"),
   supplyDemandAdminAutomationSection: read("app/supply-demand/admin/AdminAutomationSection.tsx"),
@@ -343,13 +347,19 @@ const checks = [
     && includesAll(files.supplyDemandAdmin, adminCorporateActionTypes)
     && !includesAny(files.types + files.supplyDemandAdmin, deferredCorporateActionTypes)],
   ["snapshot corporate actions require a future ex-rights date", countOccurrences(files.corporateActionDraftState, "exRightsDate: nextDate") === 3
-    && files.corporateActionDraftState.includes("subscriptionStartDate: secondDate")
+    && files.corporateActionDraftState.includes("recordDate: secondDate")
+    && files.corporateActionDraftState.includes("subscriptionStartDate: thirdDate")
     && files.corporateActionForm.includes("const exRightsMinDate = addIsoDateDays(currentSimulationDate, 1);")
     && includesAll(files.corporateActionPayload, [
       'validateSnapshotDateAfterCurrent(\n      "배당락일"',
       'validateSnapshotDateAfterCurrent(\n          "주주배정 권리락일"',
       'validateSnapshotDateAfterCurrent(\n        "권리락일"',
       "if (value <= currentSimulationDate)",
+    ]) && files.supplyDemand.includes("simulationClock?.activeBusinessDate || simulationClock?.simulationDate")
+    && includesAll(files.corporateActionsPage, [
+      "const activeBusinessDate = simulationClock?.activeBusinessDate || simulationClock?.simulationDate;",
+      "currentDate={activeBusinessDate}",
+      'status === "PARTIALLY_SUBSCRIBED" || status === "SUBSCRIBED" || status === "PAID"',
     ])],
   ["instrument report admin flow is wired", includesAll(files.stockApi + files.types + files.supplyDemandAdmin, [
     "InstrumentReport",
@@ -522,7 +532,7 @@ const checks = [
     "EMPTY_AUTO_PARTICIPANT_HOLDINGS",
     "<AutoParticipantOverviewDetail overview={overview} />",
     "resolveAutoParticipantHoldingPreview",
-    "자동참가자 투자 현황",
+    "자동 참여자 투자 현황",
     "자산과 손익",
     "보유와 평가",
     "거래와 활동",
@@ -544,7 +554,14 @@ const checks = [
     "openSellQuantity",
     "lastOrderAt",
     "lastExecutionAt",
-  ]) && appearsBefore(files.supplyDemandAdmin, '<h2 className="text-base font-black">자동 참여자</h2>', "<AdminAutoParticipantCards")
+  ]) && includesAll(files.autoParticipantManagement, [
+    "AdminAutoParticipantListFilterPanel",
+    "AdminAutoParticipantCards",
+    'workspace === "DIRECTORY"',
+  ]) && includesAll(files.autoParticipantEdit, [
+    "AutoParticipantOverviewDetail",
+    "<AutoParticipantOverviewDetail overview={overview} />",
+  ])
     && !files.supplyDemandAdmin.includes("sticky top-0 z-20")
     && !files.supplyDemandAdmin.includes("sticky top-[var(--stock-admin-sticky-top)]")
     && !files.supplyDemandAdmin.includes("stock-admin-sticky-top")
@@ -553,8 +570,7 @@ const checks = [
   ["admin account tab shows profile-level portfolio overview", includesAll(files.supplyDemandAdmin, [
     "ParticipantProfileOverviewPanel",
     "resolveParticipantProfileOverviewSummaries",
-    "activeAdminSection === \"participants-overview\"",
-    "프로필별 자동참가자 현황",
+    "프로필별 자동 참여자 현황",
     "ProfileMiniMetric",
     "ProfileOverviewInfoItem",
     "순입금",
@@ -566,7 +582,8 @@ const checks = [
     "enabledStrategyCount",
     "lastOrderAt",
     "lastExecutionAt",
-  ]) && includesAll(files.adminNavigation, [
+  ]) && files.adminAccountsSection.includes('activeSection === "participants-overview"')
+    && includesAll(files.adminNavigation, [
     'href: "/admin/participants/overview"',
     'section: "participants-overview"',
   ])],
@@ -632,8 +649,9 @@ const checks = [
     'href: "/admin/participants/overview"',
     'href: "/admin/participants/list"',
     'href: "/admin/participants/profiles"',
-    'href: "/admin/participants/symbols"',
+    'href: "/admin/market/auto-market"',
     'href: "/admin/market/liquidity"',
+    'href: "/admin/system/eod"',
     'href: "/admin/system/jobs"',
     'href: "/admin/corporate/actions"',
   ]) && !files.supplyDemandAdmin.includes("autoMarketSummaryQuery.data ?? status") && includesAll(files.canonicalAdminPage, [
