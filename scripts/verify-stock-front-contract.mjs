@@ -525,6 +525,20 @@ const checks = [
     'label="전체 현금"',
     'label="예약 매수 현금"',
   ])],
+  ["admin asset flow switches all participant roles without per-tab refetch", includesAll(
+    files.types + files.stockApi + files.queryLayer + files.supplyDemandAdmin,
+    [
+      "AdminFundFlowBreakdown",
+      "AdminParticipantScope",
+      "participantCategory",
+      "/api/stock/v1/markets/admin/fund-flow-breakdown",
+      "ADMIN_PARTICIPANT_SCOPES",
+      "resolveParticipantFundFlow",
+      "누적 흐름",
+      "하루 체결 참여",
+      "누적 체결 참여",
+    ],
+  ) && !includesAny(frontSourceText, ["fund-flow-summary"])],
   ["admin participant page shows per-participant portfolio overview", includesAll(files.supplyDemandAdmin, [
     "AutoParticipantOverviewDetail",
     "overviewByUserKey.get(participant.userKey)",
