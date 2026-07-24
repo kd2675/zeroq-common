@@ -78,6 +78,7 @@ const autoParticipantProfileConfigFields = [
   "holdingPatienceWeight",
   "deepLossHoldWeight",
   "profitTakingWeight",
+  "fundingPolicy",
   "recurringDepositAmount",
   "recurringDepositIntervalValue",
   "recurringDepositIntervalUnit",

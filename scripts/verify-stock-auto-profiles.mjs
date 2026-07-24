@@ -5,11 +5,15 @@ import { join } from "node:path";
 const root = new URL("..", import.meta.url).pathname;
 const batchProfileBehaviorTexts = readProfileBehaviorTexts();
 const batchPolicyText = batchProfileBehaviorTexts.map((source) => source.text).join("\n");
+const batchExecutionPolicyText = read("stock-batch-service/src/main/java/stock/batch/service/automarket/profile/ProfileExecutionPolicy.java");
+const batchProfilePolicyText = read("stock-batch-service/src/main/java/stock/batch/service/automarket/profile/ProfilePolicy.java");
+const batchFundingPolicyResolverText = read("stock-batch-service/src/main/java/stock/batch/service/automarket/biz/AutoParticipantFundingPolicyResolver.java");
 const backProfileConfigDefaultsText = read("stock-back-service/src/main/java/stock/back/service/market/biz/AutoParticipantProfileConfigDefaults.java");
 const batchRuntimeTestText = [
   read("stock-batch-service/src/test/java/stock/batch/service/automarket/biz/AutoMarketServiceTest.java"),
   read("stock-batch-service/src/test/java/stock/batch/service/automarket/biz/AutoParticipantCashFlowServiceTest.java"),
   read("stock-batch-service/src/test/java/stock/batch/service/automarket/biz/AutoParticipantOrderServiceTest.java"),
+  read("stock-batch-service/src/test/java/stock/batch/service/automarket/biz/AutoParticipantFundingPolicyResolverTest.java"),
   read("stock-batch-service/src/test/java/stock/batch/service/automarket/profile/AutoProfileSideSelectionTest.java"),
 ].join("\n");
 const abstractProfileBehaviorText = read("stock-batch-service/src/main/java/stock/batch/service/automarket/profile/AbstractAutoProfileBehavior.java");
@@ -32,6 +36,8 @@ const sources = {
 };
 
 const canonical = sources.batchEnum;
+const batchExecutionPolicies = parseBatchExecutionPolicies(batchExecutionPolicyText, canonical);
+const backExecutionPolicies = parseBackExecutionPolicies(backProfileConfigDefaultsText, canonical);
 const checks = Object.entries(sources).map(([name, profiles]) => [
   name,
   sameSet(canonical, profiles),
@@ -49,8 +55,8 @@ if (failed.length) {
 }
 
 const profileDefaultMismatches = compareProfileConfigDefaults(
-  parseBatchProfileConfigDefaults(batchPolicyText),
-  parseBackProfileConfigDefaults(backProfileConfigDefaultsText),
+  parseBatchProfileConfigDefaults(batchPolicyText, batchExecutionPolicies),
+  parseBackProfileConfigDefaults(backProfileConfigDefaultsText, backExecutionPolicies),
   canonical,
 );
 if (profileDefaultMismatches.length) {
@@ -67,11 +73,13 @@ if (missingBehaviorMarkers.length) {
   process.exit(1);
 }
 console.log("PASS profileBehaviorTests cover profile behavior");
-if (abstractProfileBehaviorText.includes("policy.recurringDepositAmount()")) {
-  console.log("FAIL recurring deposit metadata is coupled to common trading bias");
+if (/ProfileFundingPolicy|recurringDeposit/.test(batchProfilePolicyText)
+    || /recurringDeposit/.test(read("stock-back-service/src/main/java/stock/back/service/market/biz/ProfileConfigDefaults.java"))
+    || !batchFundingPolicyResolverText.includes("NO_RECURRING_FUNDING")) {
+  console.log("FAIL recurring deposit policy is coupled to ProfilePolicy");
   process.exit(1);
 }
-console.log("PASS recurring deposit metadata is separated from common trading bias");
+console.log("PASS recurring deposit policy is separated from ProfilePolicy");
 console.log(`stock auto profile contract passed: ${canonical.length} profiles`);
 
 function read(relativePath) {
@@ -144,11 +152,11 @@ function parseBatchPolicyProfiles(text) {
     .filter((value, index, values) => values.indexOf(value) === index);
 }
 
-function parseBatchProfileConfigDefaults(text) {
+function parseBatchProfileConfigDefaults(text, executionPolicies) {
   const defaults = new Map();
   for (const match of text.matchAll(/super\(AutoParticipantProfileType\.([A-Z_]+),\s*new ProfilePolicy\(([\s\S]*?)\)\.withPricePressureSensitivity\(([0-9.]+)\)\);/g)) {
     const args = splitArguments(match[2]);
-    defaults.set(match[1], {
+    const parsed = {
       newsWeight: parseJavaValue(args[0], text),
       momentumWeight: parseJavaValue(args[1], text),
       contrarianWeight: parseJavaValue(args[2], text),
@@ -167,15 +175,16 @@ function parseBatchProfileConfigDefaults(text) {
       dipBuyWeight: parseJavaValue(args[14], text),
       holdingPatienceWeight: parseJavaValue(args[15], text),
       deepLossHoldWeight: parseJavaValue(args[16], text),
-      recurringDepositAmount: parseJavaValue(args[17], text),
-      recurringDepositIntervalValue: parseJavaValue(args[18], text),
+      recurringDepositAmount: 0,
+      recurringDepositIntervalValue: 0,
       recurringDepositIntervalUnit: "DAY",
-    });
+    };
+    defaults.set(match[1], withExecutionPolicy(parsed, executionPolicies.get(match[1])));
   }
   return defaults;
 }
 
-function parseBackProfileConfigDefaults(text) {
+function parseBackProfileConfigDefaults(text, executionPolicies) {
   const defaults = new Map();
   const pricePressureSensitivities = parseBackPricePressureSensitivities(text);
   for (const line of text.split("\n")) {
@@ -184,7 +193,7 @@ function parseBackProfileConfigDefaults(text) {
       continue;
     }
     const args = splitArguments(match[2]);
-    defaults.set(match[1], {
+    const parsed = {
       newsWeight: parseJavaValue(args[0], text),
       momentumWeight: parseJavaValue(args[1], text),
       contrarianWeight: parseJavaValue(args[2], text),
@@ -203,10 +212,11 @@ function parseBackProfileConfigDefaults(text) {
       holdingPatienceWeight: parseJavaValue(args[14], text),
       deepLossHoldWeight: parseJavaValue(args[15], text),
       profitTakingWeight: parseJavaValue(args[16], text),
-      recurringDepositAmount: parseJavaValue(args[17], text),
-      recurringDepositIntervalValue: args[18] == null ? parseJavaValue("DEFAULT_RECURRING_DEPOSIT_INTERVAL_DAYS", text) : parseJavaValue(args[18], text),
-      recurringDepositIntervalUnit: args[19] == null ? "DAY" : parseJavaUnitValue(args[19]),
-    });
+      recurringDepositAmount: 0,
+      recurringDepositIntervalValue: 0,
+      recurringDepositIntervalUnit: "DAY",
+    };
+    defaults.set(match[1], withExecutionPolicy(parsed, executionPolicies.get(match[1])));
   }
   return defaults;
 }
@@ -245,6 +255,11 @@ function compareProfileConfigDefaults(batchDefaults, backDefaults, profiles) {
     "holdingPatienceWeight",
     "deepLossHoldWeight",
     "profitTakingWeight",
+    "decisionFrequencyMultiplier",
+    "ordersPerDecisionMultiplier",
+    "pricingMode",
+    "exitMode",
+    "inventoryMode",
     "recurringDepositAmount",
     "recurringDepositIntervalValue",
     "recurringDepositIntervalUnit",
@@ -258,7 +273,7 @@ function compareProfileConfigDefaults(batchDefaults, backDefaults, profiles) {
       continue;
     }
     for (const field of fields) {
-      if (field === "recurringDepositIntervalUnit") {
+      if (["recurringDepositIntervalUnit", "pricingMode", "exitMode", "inventoryMode"].includes(field)) {
         if (batchDefault[field] !== backDefault[field]) {
           mismatches.push(`${profile}.${field}: batch=${batchDefault[field]} back=${backDefault[field]}`);
         }
@@ -270,6 +285,111 @@ function compareProfileConfigDefaults(batchDefaults, backDefaults, profiles) {
     }
   }
   return mismatches;
+}
+
+function parseBatchExecutionPolicies(text, profiles) {
+  const body = extractJavaMethodBody(text, /static ProfileExecutionPolicy v2Default\s*\(/);
+  return combineExecutionPolicies(
+    profiles,
+    parseBinaryProfileMode(body, "AutoParticipantProfileType", "ProfilePricingMode"),
+    parseSwitchProfileModes(body, "ProfileExitMode", profiles),
+    parseBinaryProfileMode(body, "AutoParticipantProfileType", "ProfileInventoryMode"),
+  );
+}
+
+function parseBackExecutionPolicies(text, profiles) {
+  const pricingBody = extractJavaMethodBody(text, /static AutoParticipantProfilePricingMode pricingModeFor\s*\(/);
+  const exitBody = extractJavaMethodBody(text, /static AutoParticipantProfileExitMode exitModeFor\s*\(/);
+  const inventoryBody = extractJavaMethodBody(text, /static AutoParticipantProfileInventoryMode inventoryModeFor\s*\(/);
+  return combineExecutionPolicies(
+    profiles,
+    parseBinaryProfileMode(pricingBody, "AutoParticipantProfileType", "AutoParticipantProfilePricingMode"),
+    parseSwitchProfileModes(exitBody, "AutoParticipantProfileExitMode", profiles),
+    parseBinaryProfileMode(inventoryBody, "AutoParticipantProfileType", "AutoParticipantProfileInventoryMode"),
+  );
+}
+
+function extractJavaMethodBody(text, signaturePattern) {
+  const signature = signaturePattern.exec(text);
+  if (!signature) {
+    throw new Error(`Java method not found: ${signaturePattern}`);
+  }
+  const openBrace = text.indexOf("{", signature.index + signature[0].length);
+  if (openBrace < 0) {
+    throw new Error(`Java method body not found: ${signaturePattern}`);
+  }
+  let depth = 0;
+  for (let index = openBrace; index < text.length; index++) {
+    if (text[index] === "{") {
+      depth++;
+    } else if (text[index] === "}") {
+      depth--;
+      if (depth === 0) {
+        return text.slice(openBrace + 1, index);
+      }
+    }
+  }
+  throw new Error(`Java method body is not balanced: ${signaturePattern}`);
+}
+
+function parseBinaryProfileMode(body, profileEnumName, modeEnumName) {
+  const profileEnum = escapeRegExp(profileEnumName);
+  const modeEnum = escapeRegExp(modeEnumName);
+  const match = body.match(new RegExp(
+    `profileType\\s*==\\s*${profileEnum}\\.([A-Z_]+)\\s*\\?\\s*${modeEnum}\\.([A-Z_]+)\\s*:\\s*${modeEnum}\\.([A-Z_]+)`,
+  ));
+  if (!match) {
+    throw new Error(`${modeEnumName} explicit profile mapping not found`);
+  }
+  return {
+    overrides: new Map([[match[1], match[2]]]),
+    defaultValue: match[3],
+  };
+}
+
+function parseSwitchProfileModes(body, modeEnumName, profiles) {
+  const modeEnum = escapeRegExp(modeEnumName);
+  const mappings = new Map();
+  const casePattern = new RegExp(`case\\s+([A-Z_,\\s]+?)\\s*->\\s*${modeEnum}\\.([A-Z_]+)\\s*;`, "g");
+  for (const match of body.matchAll(casePattern)) {
+    for (const profile of match[1].split(",").map((value) => value.trim()).filter(Boolean)) {
+      mappings.set(profile, match[2]);
+    }
+  }
+  const defaultMatch = body.match(new RegExp(`default\\s*->\\s*${modeEnum}\\.([A-Z_]+)\\s*;`));
+  if (!defaultMatch) {
+    throw new Error(`${modeEnumName} default profile mapping not found`);
+  }
+  for (const profile of profiles) {
+    if (!mappings.has(profile)) {
+      mappings.set(profile, defaultMatch[1]);
+    }
+  }
+  return mappings;
+}
+
+function combineExecutionPolicies(profiles, pricingModes, exitModes, inventoryModes) {
+  return new Map(profiles.map((profile) => [profile, {
+    pricingMode: pricingModes.overrides.get(profile) ?? pricingModes.defaultValue,
+    exitMode: exitModes.get(profile),
+    inventoryMode: inventoryModes.overrides.get(profile) ?? inventoryModes.defaultValue,
+  }]));
+}
+
+function withExecutionPolicy(defaults, executionPolicy) {
+  if (!executionPolicy) {
+    throw new Error("explicit execution policy is missing");
+  }
+  return {
+    ...defaults,
+    decisionFrequencyMultiplier: defaults.orderMultiplier / defaults.orderTtlMultiplier,
+    ordersPerDecisionMultiplier: defaults.orderMultiplier,
+    ...executionPolicy,
+  };
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function splitArguments(text) {
@@ -416,7 +536,7 @@ function profileBehaviorMarkers() {
       /runAutoMarketStep_marketMakerPlacesTwoSidedQuotesWhenCashAndInventoryExist/,
     ],
     NOISE_TRADER: [
-      /buyBias_recurringFundingMetadataDoesNotChangeTradingPreference/,
+      /fromProfileConfigs_savedFundingValues_areResolvedOutsideTradingPolicy/,
       /runAutoMarketStep_noiseTraderWithoutCashOrHoldingCannotCreateOrder/,
     ],
     VALUE_ANCHOR: [
@@ -450,7 +570,7 @@ function profileBehaviorMarkers() {
       /fundRecurringCash_paydayAccumulatorDepositsOnlyAfterConfiguredInterval/,
     ],
     DIVIDEND_REINVESTOR: [
-      /buyBias_dividendReinvestorHasNoRecurringCashByDefault/,
+      /resolve_missingProfileConfig_disablesRecurringFunding/,
       /dividendReinvestorBehavior_recentDividendPaymentRaisesBuyBiasAndOrderCount/,
       /runAutoMarketStep_dividendReinvestorBuysAfterDividendPaymentWithoutRecurringCash/,
       /fundRecurringCash_dividendReinvestorDoesNotReceiveRecurringCash/,
