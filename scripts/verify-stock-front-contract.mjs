@@ -178,8 +178,9 @@ const checks = [
     "simulationClockQueryOptions",
     "createSimulationTimeSnapshot",
   ])],
-  ["auto participant overview query key preserves user key array", includesAll(files.queryLayer, [
-    "autoParticipantOverviews: (options?: { activityScope?: string; includeHoldings?: boolean; userKeys?: string[] })",
+  ["auto participant overview query key preserves lifecycle scope and user key array", includesAll(files.queryLayer, [
+    "autoParticipantOverviews: (options?: { activityScope?: string; includeHoldings?: boolean; lifecycleScope?: string; userKeys?: string[] })",
+    'options?.lifecycleScope ?? "CURRENT"',
     "[...(options?.userKeys ?? [])].sort(),",
   ]) && !files.queryLayer.includes("[...(options?.userKeys ?? [])].sort().join(\",\")")],
   ["root page routes to primary stock pages", includesAll(files.home, [
@@ -666,6 +667,7 @@ const checks = [
     'href: "/admin/funds/payroll"',
     'href: "/admin/participants/overview"',
     'href: "/admin/participants/list"',
+    'href: "/admin/participants/dormant"',
     'href: "/admin/participants/profiles"',
     'href: "/admin/market/auto-market"',
     'href: "/admin/market/liquidity"',
@@ -679,6 +681,19 @@ const checks = [
     'source: "/supply-demand/admin"',
     'destination: "/admin"',
   ])],
+  ["admin dormant assets keep withdrawn participant ledgers visible", includesAll(
+    files.stockApi + files.types + files.supplyDemandAdmin + files.queryLayer,
+    [
+      'AutoParticipantLifecycleScope = "CURRENT" | "WITHDRAWN"',
+      "getAutoParticipantSymbolConfigs",
+      'lifecycleScope: "WITHDRAWN"',
+      'activeAdminSection === "participants-dormant"',
+      "AdminDormantAssetsPanel",
+      "탈퇴 자동 참여자 휴면 원장",
+      "탈퇴 후 잔존 상태 점검",
+      "저장된 종목별 전략",
+    ],
+  )],
   ["admin shows salary recipients from participant overview and recurring policy", includesAll(files.stockApi + files.types + files.supplyDemandAdmin, [
     "AutoParticipantOverview",
     "getAutoParticipantOverviews",
