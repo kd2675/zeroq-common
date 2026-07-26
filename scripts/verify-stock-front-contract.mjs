@@ -103,7 +103,7 @@ const liquidityProviderPolicyFields = [
   "quoteIntervalSeconds",
   "재고 밴드 진행 현황",
   "기존 계좌 전량 이전",
-  "passive only",
+  "수동 지정가 전용",
 ];
 
 const supplyDemandBatchJobNames = [
