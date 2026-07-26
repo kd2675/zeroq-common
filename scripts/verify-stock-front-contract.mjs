@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const root = new URL("..", import.meta.url).pathname;
@@ -84,37 +84,26 @@ const autoParticipantProfileConfigFields = [
   "recurringDepositIntervalUnit",
 ];
 
-const listingAutoInstitutionPolicyFields = [
-  "targetBuyQuantity",
-  "targetSellQuantity",
-  "targetHoldingQuantity",
+const liquidityProviderPolicyFields = [
+  "targetInventoryQuantity",
   "inventoryBandQuantity",
-  "initialInventoryQuantity",
-  "initialIssuePrice",
-  "initialInventoryCost",
-  "operationMode",
-  "strategyProfile",
   "targetSpreadTicks",
+  "maxSpreadTicks",
+  "maxOrderQuantity",
+  "referenceDailyVolume",
+  "targetOpenParticipationRate",
+  "maxOpenParticipationRate",
+  "maxSingleOrderParticipationRate",
+  "dailyExecutionParticipationRate",
+  "dailySubmissionMultiplier",
+  "dailyLossLimitAmount",
   "inventorySkewTicks",
-  "minimumProfitRate",
-  "aggressiveUnwindThreshold",
-  "aggressiveOrderRatio",
-  "권장 수량 적용",
-  "전체 발행량 대비 목표 보유 비율",
-  "MAX_LISTING_AUTO_NEW_ORDERS_PER_SIDE_PER_RUN",
-  "UNDERWRITER_RETURN",
-  "LIQUIDITY_PROVIDER",
-  "HYBRID",
-  "LIQUIDITY_FIRST",
-  "BALANCED",
-  "RETURN_FIRST",
-  "calculateListingAutoTargetFit",
-  "setPositionSide(\"TWO_SIDED\")",
-  "보유 허용 밴드",
-  "유효 호가 목표",
-  "openBuyQuantity",
-  "openSellQuantity",
-  "TWO_SIDED",
+  "minimumQuoteLifetimeSeconds",
+  "orderTtlSeconds",
+  "quoteIntervalSeconds",
+  "재고 밴드 진행 현황",
+  "기존 계좌 전량 이전",
+  "passive only",
 ];
 
 const supplyDemandBatchJobNames = [
@@ -122,7 +111,9 @@ const supplyDemandBatchJobNames = [
   "auto-market-order-expiry",
   "auto-participant-cash-flow",
   "corporate-actions",
-  "listing-auto-market",
+  "institution-market",
+  "issue-underwriter-market",
+  "liquidity-provider-market",
   "order-book-execution",
   "portfolio-settlement",
 ];
@@ -131,20 +122,12 @@ const recurringCashIntervalOptions = parseOptionValues(
   files.supplyDemandAdminConstants,
   "RECURRING_CASH_INTERVAL_UNIT_OPTIONS",
 );
-const listingAutoFragmentLimits = [
-  parseIntegerConstant(
-    readWorkspace("stock-batch-service/src/main/java/stock/batch/service/automarket/biz/ListingAutoAccountOrderService.java"),
-    "MAX_NEW_ORDERS_PER_SIDE_PER_RUN",
-  ),
-  parseIntegerConstant(
-    readWorkspace("stock-back-service/src/main/java/stock/back/service/market/biz/ListingAutoAccountConfigValidator.java"),
-    "MAX_NEW_ORDERS_PER_SIDE_PER_RUN",
-  ),
-  parseIntegerConstant(files.supplyDemandAdminConstants, "MAX_LISTING_AUTO_NEW_ORDERS_PER_SIDE_PER_RUN"),
-  parseIntegerConstant(
-    read("app/supply-demand/admin/listingAutoTargetFit.ts"),
-    "MAX_LISTING_AUTO_NEW_ORDERS_PER_SIDE_PER_RUN",
-  ),
+const removedListingAutoFiles = [
+  "stock-batch-service/src/main/java/stock/batch/service/automarket/biz/ListingAutoAccountOrderService.java",
+  "stock-batch-service/src/main/java/stock/batch/service/batch/automarket/job/ListingAutoMarketJob.java",
+  "stock-back-service/src/main/java/stock/back/service/market/biz/ListingAutoAccountConfigValidator.java",
+  "stock-front-service/app/supply-demand/admin/AdminListingAutoAccountPanel.tsx",
+  "stock-front-service/app/supply-demand/admin/listingAutoTargetFit.ts",
 ];
 
 const checks = [
@@ -456,9 +439,8 @@ const checks = [
     "상장주관사 포지션",
   ])],
   ["auto participant profile config fields are wired", autoParticipantProfileConfigFields.every((field) => includesAll(files.types + files.stockApi + files.supplyDemandAdmin, [field]))],
-  ["listing auto institutional policy fields are wired", listingAutoInstitutionPolicyFields.every((field) => includesAll(files.types + files.stockApi + files.supplyDemandAdmin, [field]))],
-  ["listing auto fragment limit matches batch, back, and front", listingAutoFragmentLimits.every((value) => value > 0)
-    && new Set(listingAutoFragmentLimits).size === 1],
+  ["liquidity provider policy and inventory controls are wired", liquidityProviderPolicyFields.every((field) => includesAll(files.types + files.stockApi + files.supplyDemandAdmin, [field]))],
+  ["legacy listing auto runtime and admin files are removed", removedListingAutoFiles.every((path) => !existsSync(join(root, path)))],
   ["automation profile tab renders profile config panel", includesAll(files.supplyDemandAdmin + files.supplyDemandAdminAutomationSection, [
     'if (activeSection === "participants-profiles")',
     "<AdminProfilesSection",
@@ -668,10 +650,11 @@ const checks = [
     'href: "/admin/participants/overview"',
     'href: "/admin/participants/list"',
     'href: "/admin/participants/profiles"',
+    'href: "/admin/participants/institutions"',
     'href: "/admin/market/auto-market"',
     'href: "/admin/market/liquidity-providers"',
-    'href: "/admin/market/legacy-liquidity"',
     'href: "/admin/funds/custody"',
+    'href: "/admin/corporate/underwriting"',
     'href: "/admin/system/eod"',
     'href: "/admin/system/jobs"',
     'href: "/admin/corporate/actions"',
@@ -819,15 +802,6 @@ console.log("stock front contract passed");
 
 function read(relativePath) {
   return readFileSync(join(frontRoot, relativePath), "utf8");
-}
-
-function readWorkspace(relativePath) {
-  return readFileSync(join(root, relativePath), "utf8");
-}
-
-function parseIntegerConstant(source, constantName) {
-  const match = source.match(new RegExp(`${constantName}\\s*=\\s*(\\d+)`));
-  return match ? Number(match[1]) : Number.NaN;
 }
 
 function readSourceText(relativePath) {
