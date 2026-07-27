@@ -1,4 +1,4 @@
-<!-- Updated: 2026-07-10 -->
+<!-- Updated: 2026-07-27 -->
 
 # zeroq-common Agent Guide
 
@@ -121,6 +121,10 @@
 - 린트: `npm run lint`
 - 배포 확인: `npm run build && npm run start`
 
+## Commit Message Rules
+
+- 커밋 메시지는 `COMMIT_MESSAGE_CONVENTION.md`를 따른다.
+
 ## Documentation Rules
 
 - 루트 문서를 바꾸면 관련 서비스 문서와 `AGENTS_DOCUMENTATION_INDEX.md` 정합성도 확인합니다.
@@ -153,3 +157,4 @@
 - `README.md`
 - `HELP.md`
 - `AGENTS_DOCUMENTATION_INDEX.md`
+- `COMMIT_MESSAGE_CONVENTION.md`

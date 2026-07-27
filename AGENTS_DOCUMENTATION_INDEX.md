@@ -9,6 +9,7 @@
 | `README.md` | 워크스페이스 전체 구조와 실행 개요 |
 | `HELP.md` | 루트에서 자주 쓰는 명령 모음 |
 | `AGENTS.md` | 작업 규칙과 문서 유지 기준 |
+| `COMMIT_MESSAGE_CONVENTION.md` | 한국어 커밋 메시지 작성 규칙 |
 
 ## Common / Infrastructure
 
@@ -53,20 +54,21 @@
 
 1. `README.md`
 2. `AGENTS.md`
-3. 대상 프로젝트의 `README.md`
-4. 대상 프로젝트의 `HELP.md` 또는 `AGENTS.md`
-5. Stock 기능 개발이면 `stock-back-service/docs/market-simulation/00-overview.md`
-6. Stock 코드 파일별 책임 확인이면 `stock-back-service/docs/market-simulation/13-code-ownership-map.md`
-7. Stock 기능 변경 절차 확인이면 `stock-back-service/docs/market-simulation/14-feature-change-playbooks.md`
-8. Stock 기업 이벤트 추가 판단이면 `stock-back-service/docs/market-simulation/15-corporate-action-scope.md`
-9. Stock 초기 필수 기능 범위 감사이면 `stock-back-service/docs/market-simulation/16-initial-essential-scope-audit.md`
-10. Stock 초기 필수 범위 완료 증거가 필요하면 `stock-back-service/docs/market-simulation/17-essential-completion-evidence.md`
-11. Stock 항목별 개발 핸드오프가 필요하면 `stock-back-service/docs/market-simulation/feature-handbook/00-index.md`
-12. Stock 실제 코드 변경 시작점이 필요하면 `stock-back-service/docs/market-simulation/development-specs/00-index.md`
-13. Stock 장마감·정산·야간 후처리 또는 주문·체결 부하 보호 작업이면 `stock-batch-service/docs/stock-eod-refactoring-plan-2026-07-15.md`
-14. Muse 작업이면 `muse-back-service/AGENTS_MUSE_CONTEST_UNIFIED.md`
-15. Semo 기능 추가/재구성이면 `semo-front-service/AGENTS_SEMO_MORE_FEATURE_CHECKLIST.md`
-16. Semo 제품 방향 판단이면 `semo-front-service/AGENTS_SEMO_PRODUCT_DIRECTION.md`
+3. `COMMIT_MESSAGE_CONVENTION.md`
+4. 대상 프로젝트의 `README.md`
+5. 대상 프로젝트의 `HELP.md` 또는 `AGENTS.md`
+6. Stock 기능 개발이면 `stock-back-service/docs/market-simulation/00-overview.md`
+7. Stock 코드 파일별 책임 확인이면 `stock-back-service/docs/market-simulation/13-code-ownership-map.md`
+8. Stock 기능 변경 절차 확인이면 `stock-back-service/docs/market-simulation/14-feature-change-playbooks.md`
+9. Stock 기업 이벤트 추가 판단이면 `stock-back-service/docs/market-simulation/15-corporate-action-scope.md`
+10. Stock 초기 필수 기능 범위 감사이면 `stock-back-service/docs/market-simulation/16-initial-essential-scope-audit.md`
+11. Stock 초기 필수 범위 완료 증거가 필요하면 `stock-back-service/docs/market-simulation/17-essential-completion-evidence.md`
+12. Stock 항목별 개발 핸드오프가 필요하면 `stock-back-service/docs/market-simulation/feature-handbook/00-index.md`
+13. Stock 실제 코드 변경 시작점이 필요하면 `stock-back-service/docs/market-simulation/development-specs/00-index.md`
+14. Stock 장마감·정산·야간 후처리 또는 주문·체결 부하 보호 작업이면 `stock-batch-service/docs/stock-eod-refactoring-plan-2026-07-15.md`
+15. Muse 작업이면 `muse-back-service/AGENTS_MUSE_CONTEST_UNIFIED.md`
+16. Semo 기능 추가/재구성이면 `semo-front-service/AGENTS_SEMO_MORE_FEATURE_CHECKLIST.md`
+17. Semo 제품 방향 판단이면 `semo-front-service/AGENTS_SEMO_PRODUCT_DIRECTION.md`
 
 ## Maintenance Rules
 
