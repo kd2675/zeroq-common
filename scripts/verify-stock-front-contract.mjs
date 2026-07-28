@@ -436,7 +436,7 @@ const checks = [
     "매수 예상 슬리피지",
     "매도 예상 슬리피지",
     "현재 미체결 주문",
-    "상장주관사 포지션",
+    "발행 인수기관 포지션",
   ])],
   ["auto participant profile config fields are wired", autoParticipantProfileConfigFields.every((field) => includesAll(files.types + files.stockApi + files.supplyDemandAdmin, [field]))],
   ["liquidity provider policy and inventory controls are wired", liquidityProviderPolicyFields.every((field) => includesAll(files.types + files.stockApi + files.supplyDemandAdmin, [field]))],
