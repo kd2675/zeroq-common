@@ -201,7 +201,6 @@ const stockBackApiSurface = [
   '@PatchMapping("/batch-jobs/runtime-controls/{jobName}")',
   '@PatchMapping("/auto-market/profile-configs/{profileType}")',
   '@PatchMapping("/auto-market/configs/{symbol}")',
-  '@PatchMapping("/auto-market/listing-accounts/{symbol}")',
   '@PatchMapping("/auto-market/participants/{userKey}")',
   '@DeleteMapping("/auto-market/participants/{userKey}")',
   '@PostMapping("/auto-market/participants/{userKey}/cash-adjustments")',
@@ -273,7 +272,8 @@ const stockBackApiSurfaceRoutes = [
   "PATCH /api/stock/v1/markets/batch-jobs/runtime-controls/{jobName}",
   "PATCH /api/stock/v1/markets/auto-market/profile-configs/{profileType}",
   "PATCH /api/stock/v1/markets/auto-market/configs/{symbol}",
-  "PATCH /api/stock/v1/markets/auto-market/listing-accounts/{symbol}",
+  "POST /api/stock/v1/markets/institution-portfolios/{portfolioId}/cash-adjustments",
+  "PATCH /api/stock/v1/markets/institution-portfolios/{portfolioId}/policy",
   "PATCH /api/stock/v1/markets/auto-market/participants/{userKey}",
   "DELETE /api/stock/v1/markets/auto-market/participants/{userKey}",
   "POST /api/stock/v1/markets/auto-market/participants/{userKey}/cash-adjustments",
@@ -331,7 +331,7 @@ const checks = [
   [
     "admin corporate action choices cover manually registered scope and exclude automatic or deferred actions",
     includesAll(files.frontAdmin, adminCorporateActionTypes.map((type) => `value="${type}"`))
-      && files.frontAdmin.includes("INITIAL_ISSUE 원장")
+      && files.frontAdmin.includes("INITIAL_ISSUE 보관원장")
       && !files.frontAdmin.includes('value="INITIAL_ISSUE"')
       && !includesAny(files.frontAdmin, deferredCorporateActionTypes),
   ],
