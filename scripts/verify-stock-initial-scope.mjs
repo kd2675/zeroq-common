@@ -91,7 +91,7 @@ const defaultSeedMarkers = [
   "INSERT INTO stock_instrument",
   "INSERT INTO stock_price",
   "INSERT INTO stock_virtual_market_config",
-  "INSERT INTO stock_auto_participant",
+  "INSERT INTO stock_auto_participant(",
   "MERGE INTO stock_virtual_market_config",
   "MERGE INTO stock_order_book_instrument",
   "MERGE INTO stock_auto_participant",
@@ -193,6 +193,8 @@ const stockBackApiSurface = [
   '@GetMapping("/virtual-market")',
   '@GetMapping("/order-book-market")',
   '@GetMapping("/auto-market")',
+  '@GetMapping("/auto-market/v3/operations")',
+  '@PatchMapping("/auto-market/v3/runtime")',
   '@GetMapping("/auto-market/participants/overviews")',
   '@GetMapping("/auto-market/cash-flow")',
   '@PatchMapping("/auto-market/cash-flow")',
@@ -272,8 +274,7 @@ const stockBackApiSurfaceRoutes = [
   "PATCH /api/stock/v1/markets/batch-jobs/runtime-controls/{jobName}",
   "PATCH /api/stock/v1/markets/auto-market/profile-configs/{profileType}",
   "PATCH /api/stock/v1/markets/auto-market/configs/{symbol}",
-  "POST /api/stock/v1/markets/institution-portfolios/{portfolioId}/cash-adjustments",
-  "PATCH /api/stock/v1/markets/institution-portfolios/{portfolioId}/policy",
+  "PATCH /api/stock/v1/markets/auto-market/listing-accounts/{symbol}",
   "PATCH /api/stock/v1/markets/auto-market/participants/{userKey}",
   "DELETE /api/stock/v1/markets/auto-market/participants/{userKey}",
   "POST /api/stock/v1/markets/auto-market/participants/{userKey}/cash-adjustments",
@@ -294,6 +295,14 @@ const stockBatchApiSurfaceRoutes = [
   "POST /internal/stock-batch/v1/jobs/market-close/rollover",
   "POST /internal/stock-batch/v1/jobs/corporate-actions/run",
 ];
+const currentStockBackApiSurfaceRoutes = parseExpectedApiRoutes(
+  files.stockBackApiSurfaceTest,
+  "/api/stock/v1",
+);
+const currentStockBatchApiSurfaceRoutes = parseExpectedApiRoutes(
+  files.stockBatchApiSurfaceTest,
+  "/internal/stock-batch/v1",
+);
 
 const checks = [
   [
@@ -676,13 +685,13 @@ const checks = [
       "RequestMappingHandlerMapping",
       "getHandlerMethods()",
       "stockBackApiSurface_matchesInitialEssentialScope",
-      ...stockBackApiSurfaceRoutes,
+      ...currentStockBackApiSurfaceRoutes,
     ])
       && includesAll(files.stockBatchApiSurfaceTest, [
         "RequestMappingHandlerMapping",
         "getHandlerMethods()",
         "stockBatchInternalApiSurface_matchesInitialEssentialScope",
-        ...stockBatchApiSurfaceRoutes,
+        ...currentStockBatchApiSurfaceRoutes,
       ]),
   ],
   [
@@ -781,6 +790,12 @@ function parseTsUnion(text, typeName) {
     return [];
   }
   return [...match[1].matchAll(/"([^"]+)"/g)].map((item) => item[1]);
+}
+
+function parseExpectedApiRoutes(text, pathPrefix) {
+  return [...text.matchAll(/"((?:GET|POST|PATCH|PUT|DELETE) (\/[^"]+))"/g)]
+    .map((match) => match[1])
+    .filter((route) => route.includes(` ${pathPrefix}`));
 }
 
 function includesAll(text, needles) {

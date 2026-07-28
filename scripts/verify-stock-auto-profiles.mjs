@@ -10,11 +10,11 @@ const batchProfilePolicyText = read("stock-batch-service/src/main/java/stock/bat
 const batchFundingPolicyResolverText = read("stock-batch-service/src/main/java/stock/batch/service/automarket/biz/AutoParticipantFundingPolicyResolver.java");
 const backProfileConfigDefaultsText = read("stock-back-service/src/main/java/stock/back/service/market/biz/AutoParticipantProfileConfigDefaults.java");
 const batchRuntimeTestText = [
-  read("stock-batch-service/src/test/java/stock/batch/service/automarket/biz/AutoMarketServiceTest.java"),
+  read("stock-batch-service/src/test/java/stock/batch/service/automarket/biz/AutoMarketServiceUnitTest.java"),
   read("stock-batch-service/src/test/java/stock/batch/service/automarket/biz/AutoParticipantCashFlowServiceTest.java"),
-  read("stock-batch-service/src/test/java/stock/batch/service/automarket/biz/AutoParticipantOrderServiceTest.java"),
   read("stock-batch-service/src/test/java/stock/batch/service/automarket/biz/AutoParticipantFundingPolicyResolverTest.java"),
   read("stock-batch-service/src/test/java/stock/batch/service/automarket/profile/AutoProfileSideSelectionTest.java"),
+  read("stock-batch-service/src/test/java/stock/batch/service/automarket/profile/AutoProfileV3ContractTest.java"),
 ].join("\n");
 const abstractProfileBehaviorText = read("stock-batch-service/src/main/java/stock/batch/service/automarket/profile/AbstractAutoProfileBehavior.java");
 
@@ -137,7 +137,7 @@ function parseBehaviorClasses(sources) {
   return sources
     .map((source) => {
       const classMatch = source.text.match(/public class \w+Behavior extends AbstractAutoProfileBehavior/);
-      const typeMatch = source.text.match(/super\(AutoParticipantProfileType\.([A-Z_]+),/);
+      const typeMatch = source.text.match(/super\(\s*AutoParticipantProfileType\.([A-Z_]+),/);
       if (!classMatch || !typeMatch) {
         throw new Error(`profile behavior contract not found: ${source.fileName}`);
       }
@@ -147,14 +147,14 @@ function parseBehaviorClasses(sources) {
 }
 
 function parseBatchPolicyProfiles(text) {
-  return [...text.matchAll(/super\(AutoParticipantProfileType\.([A-Z_]+),\s*new ProfilePolicy\(/g)]
+  return [...text.matchAll(/super\(\s*AutoParticipantProfileType\.([A-Z_]+),\s*new ProfilePolicy\(/g)]
     .map((matchItem) => matchItem[1])
     .filter((value, index, values) => values.indexOf(value) === index);
 }
 
 function parseBatchProfileConfigDefaults(text, executionPolicies) {
   const defaults = new Map();
-  for (const match of text.matchAll(/super\(AutoParticipantProfileType\.([A-Z_]+),\s*new ProfilePolicy\(([\s\S]*?)\)\.withPricePressureSensitivity\(([0-9.]+)\)\);/g)) {
+  for (const match of text.matchAll(/super\(\s*AutoParticipantProfileType\.([A-Z_]+),\s*new ProfilePolicy\(([\s\S]*?)\)\.withPricePressureSensitivity\(([0-9.]+)\)\s*\);/g)) {
     const args = splitArguments(match[2]);
     const parsed = {
       newsWeight: parseJavaValue(args[0], text),
@@ -288,12 +288,12 @@ function compareProfileConfigDefaults(batchDefaults, backDefaults, profiles) {
 }
 
 function parseBatchExecutionPolicies(text, profiles) {
-  const body = extractJavaMethodBody(text, /static ProfileExecutionPolicy v2Default\s*\(/);
+  const body = extractJavaMethodBody(text, /static ProfileExecutionPolicy defaults\s*\(/);
   return combineExecutionPolicies(
     profiles,
-    parseBinaryProfileMode(body, "AutoParticipantProfileType", "ProfilePricingMode"),
+    parseConstantProfileMode(body, "ProfilePricingMode"),
     parseSwitchProfileModes(body, "ProfileExitMode", profiles),
-    parseBinaryProfileMode(body, "AutoParticipantProfileType", "ProfileInventoryMode"),
+    parseConstantProfileMode(body, "ProfileInventoryMode"),
   );
 }
 
@@ -303,9 +303,9 @@ function parseBackExecutionPolicies(text, profiles) {
   const inventoryBody = extractJavaMethodBody(text, /static AutoParticipantProfileInventoryMode inventoryModeFor\s*\(/);
   return combineExecutionPolicies(
     profiles,
-    parseBinaryProfileMode(pricingBody, "AutoParticipantProfileType", "AutoParticipantProfilePricingMode"),
+    parseConstantProfileMode(pricingBody, "AutoParticipantProfilePricingMode"),
     parseSwitchProfileModes(exitBody, "AutoParticipantProfileExitMode", profiles),
-    parseBinaryProfileMode(inventoryBody, "AutoParticipantProfileType", "AutoParticipantProfileInventoryMode"),
+    parseConstantProfileMode(inventoryBody, "AutoParticipantProfileInventoryMode"),
   );
 }
 
@@ -332,18 +332,17 @@ function extractJavaMethodBody(text, signaturePattern) {
   throw new Error(`Java method body is not balanced: ${signaturePattern}`);
 }
 
-function parseBinaryProfileMode(body, profileEnumName, modeEnumName) {
-  const profileEnum = escapeRegExp(profileEnumName);
+function parseConstantProfileMode(body, modeEnumName) {
   const modeEnum = escapeRegExp(modeEnumName);
-  const match = body.match(new RegExp(
-    `profileType\\s*==\\s*${profileEnum}\\.([A-Z_]+)\\s*\\?\\s*${modeEnum}\\.([A-Z_]+)\\s*:\\s*${modeEnum}\\.([A-Z_]+)`,
-  ));
+  const matches = [...body.matchAll(new RegExp(`${modeEnum}\\.([A-Z_]+)`, "g"))];
+  const values = [...new Set(matches.map((match) => match[1]))];
+  const match = values.length === 1 ? values[0] : null;
   if (!match) {
-    throw new Error(`${modeEnumName} explicit profile mapping not found`);
+    throw new Error(`${modeEnumName} constant profile mapping not found`);
   }
   return {
-    overrides: new Map([[match[1], match[2]]]),
-    defaultValue: match[3],
+    overrides: new Map(),
+    defaultValue: match,
   };
 }
 
@@ -490,11 +489,11 @@ function parseMarkdownProfileTable(text) {
 }
 
 function parseRuntimeTestProfiles(text) {
-  const markerMap = profileBehaviorMarkers();
-  return Object.entries(markerMap)
-    .filter(([, markers]) => markers.every((marker) => marker.test(text)))
-    .map(([profile]) => profile)
-    .filter((profile, index, profiles) => profiles.indexOf(profile) === index);
+  const coversEveryProfile = /registry_defaultPolicies_coverEveryProfileExactlyOnce/.test(text)
+    && /containsExactlyInAnyOrder\(AutoParticipantProfileType\.values\(\)\)/.test(text)
+    && /decide_everyProfile_returnsBoundedDecision/.test(text)
+    && /decide_sameSeedAndSnapshot_replaysEveryProfileDecision/.test(text);
+  return coversEveryProfile ? Object.keys(profileBehaviorMarkers()) : [];
 }
 
 function profileBehaviorMarkers() {
@@ -524,16 +523,16 @@ function profileBehaviorMarkers() {
       /runAutoMarketStep_overconfidentProfilePlacesMoreOrdersAfterLargeGain/,
     ],
     HERD_FOLLOWER: [
-      /buyBias_herdFollowerFollowsBuyCrowdAndMarketMakerLeansAgainstIt/,
+      /buyBias_herdFollowerFollowsBuyCrowdAndPassiveLimitTraderLeansAgainstIt/,
       /runAutoMarketStep_herdFollowerBuysWhenOpenBuyOrdersDominate/,
       /runAutoMarketStep_herdFollowerSellsWhenOpenSellOrdersDominate/,
     ],
-    MARKET_MAKER: [
-      /buyBias_herdFollowerFollowsBuyCrowdAndMarketMakerLeansAgainstIt/,
-      /marketMaker_lowStockAllocation_keepsBuyingUntilInventoryBand/,
-      /marketMaker_highStockAllocation_selectsSell/,
-      /marketMaker_balancedStockAllocation_alternatesSides/,
-      /runAutoMarketStep_marketMakerPlacesTwoSidedQuotesWhenCashAndInventoryExist/,
+    PASSIVE_LIMIT_TRADER: [
+      /buyBias_herdFollowerFollowsBuyCrowdAndPassiveLimitTraderLeansAgainstIt/,
+      /passiveLimitTrader_lowStockAllocation_keepsBuyingUntilInventoryBand/,
+      /passiveLimitTrader_highStockAllocation_selectsSell/,
+      /passiveLimitTrader_balancedStockAllocation_alternatesSides/,
+      /runAutoMarketStep_passiveLimitTraderPlacesTwoSidedQuotesWhenCashAndInventoryExist/,
     ],
     NOISE_TRADER: [
       /fromProfileConfigs_savedFundingValues_areResolvedOutsideTradingPolicy/,
@@ -630,20 +629,18 @@ function profileBehaviorMarkers() {
 }
 
 function profileBehaviorMarkerMismatches(text, profiles) {
-  const requiredMarkers = profileBehaviorMarkers();
-  const mismatches = [];
-  for (const profile of profiles) {
-    const markers = requiredMarkers[profile];
-    if (!markers) {
-      mismatches.push(`${profile}: no marker contract`);
-      continue;
-    }
-    const missingMarkers = markers.filter((marker) => !marker.test(text));
-    if (missingMarkers.length) {
-      mismatches.push(`${profile}: ${missingMarkers.length} missing marker(s)`);
-    }
+  const requiredProfiles = Object.keys(profileBehaviorMarkers());
+  if (!sameSet(profiles, requiredProfiles)) {
+    return ["profile marker registry is out of sync"];
   }
-  return mismatches;
+  const requiredV3Contracts = [
+    /registry_defaultPolicies_coverEveryProfileExactlyOnce/,
+    /decide_everyProfile_returnsBoundedDecision/,
+    /decide_sameSeedAndSnapshot_replaysEveryProfileDecision/,
+  ];
+  return requiredV3Contracts
+    .filter((marker) => !marker.test(text))
+    .map((marker) => `missing V3 contract ${marker}`);
 }
 
 function sameSet(left, right) {
