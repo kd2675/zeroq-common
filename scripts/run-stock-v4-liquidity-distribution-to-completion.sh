@@ -17,13 +17,33 @@ if [[ "${STOCK_V4_REPLAY_ALLOW_LIQUIDITY_DISTRIBUTION_COMPLETION:-}" != "YES" ]]
   printf 'FAIL liquidity-distribution completion requires STOCK_V4_REPLAY_ALLOW_LIQUIDITY_DISTRIBUTION_COMPLETION=YES\n' >&2
   exit 1
 fi
-if [[ ! "${STOCK_MYSQL_REPLAY_SCHEMA}" =~ ^STOCK_V4_REPLAY_[A-Za-z0-9_]+$ ]] \
-    || [[ "${STOCK_MYSQL_REPLAY_SCHEMA}" =~ ^STOCK_V4_REPLAY_BATCH_ ]]; then
-  printf 'FAIL business replay schema must match STOCK_V4_REPLAY_[A-Za-z0-9_]+\n' >&2
-  exit 1
-fi
-if [[ ! "${STOCK_MYSQL_REPLAY_BATCH_SCHEMA}" =~ ^STOCK_V4_REPLAY_BATCH_[A-Za-z0-9_]+$ ]]; then
-  printf 'FAIL batch replay schema must match STOCK_V4_REPLAY_BATCH_[A-Za-z0-9_]+\n' >&2
+TARGET_ENVIRONMENT="${STOCK_V4_TARGET_ENVIRONMENT:-replay}"
+OPERATING_BATCH_ALLOW=""
+OPERATING_DAY_ALLOW=""
+if [[ "${TARGET_ENVIRONMENT}" == "operating" ]]; then
+  if [[ "${STOCK_V4_OPERATING_ALLOW_LIQUIDITY_DISTRIBUTION_COMPLETION:-}" != "YES" ]]; then
+    printf 'FAIL operating liquidity-distribution completion requires STOCK_V4_OPERATING_ALLOW_LIQUIDITY_DISTRIBUTION_COMPLETION=YES\n' >&2
+    exit 1
+  fi
+  if [[ "${STOCK_MYSQL_REPLAY_SCHEMA}" != "STOCK_SERVICE" \
+      || "${STOCK_MYSQL_REPLAY_BATCH_SCHEMA}" != "STOCK_BATCH_METADATA" ]]; then
+    printf 'FAIL operating liquidity-distribution completion requires exact STOCK_SERVICE and STOCK_BATCH_METADATA schemas\n' >&2
+    exit 1
+  fi
+  OPERATING_BATCH_ALLOW="YES"
+  OPERATING_DAY_ALLOW="YES"
+elif [[ "${TARGET_ENVIRONMENT}" == "replay" ]]; then
+  if [[ ! "${STOCK_MYSQL_REPLAY_SCHEMA}" =~ ^STOCK_V4_REPLAY_[A-Za-z0-9_]+$ ]] \
+      || [[ "${STOCK_MYSQL_REPLAY_SCHEMA}" =~ ^STOCK_V4_REPLAY_BATCH_ ]]; then
+    printf 'FAIL business replay schema must match STOCK_V4_REPLAY_[A-Za-z0-9_]+\n' >&2
+    exit 1
+  fi
+  if [[ ! "${STOCK_MYSQL_REPLAY_BATCH_SCHEMA}" =~ ^STOCK_V4_REPLAY_BATCH_[A-Za-z0-9_]+$ ]]; then
+    printf 'FAIL batch replay schema must match STOCK_V4_REPLAY_BATCH_[A-Za-z0-9_]+\n' >&2
+    exit 1
+  fi
+else
+  printf 'FAIL STOCK_V4_TARGET_ENVIRONMENT must be replay or operating\n' >&2
   exit 1
 fi
 if [[ "${STOCK_MYSQL_REPLAY_SCHEMA}" == "${STOCK_MYSQL_REPLAY_BATCH_SCHEMA}" ]]; then
@@ -113,6 +133,7 @@ MYSQL_CONNECTION_ARGS=(
   "--port=${STOCK_MYSQL_PORT}"
   "--user=${STOCK_MYSQL_USER}"
   "--connect-timeout=10"
+  "--ssl-mode=DISABLED"
   "--default-character-set=utf8mb4"
   "--batch"
   "--raw"
@@ -319,11 +340,13 @@ start_batch() {
   batch_port="${port}"
   batch_log="/tmp/stock-v4-${mode}-${port}-$$.log"
   if [[ "${mode}" == "liquidity-distribution-trading" ]]; then
+    STOCK_V4_OPERATING_ALLOW_BATCH="${OPERATING_BATCH_ALLOW}" \
     STOCK_V4_REPLAY_BATCH_PORT="${port}" \
     STOCK_V4_REPLAY_ALLOW_LIQUIDITY_DISTRIBUTION=YES \
       bash "${SCRIPT_DIR}/run-stock-v4-replay-batch.sh" \
         --liquidity-distribution-trading >"${batch_log}" 2>&1 &
   else
+    STOCK_V4_OPERATING_ALLOW_BATCH="${OPERATING_BATCH_ALLOW}" \
     STOCK_V4_REPLAY_BATCH_PORT="${port}" \
     STOCK_V4_REPLAY_ALLOW_EOD_TRANSITION=YES \
       bash "${SCRIPT_DIR}/run-stock-v4-replay-batch.sh" \
@@ -584,6 +607,7 @@ while true; do
   set +e
   STOCK_V4_REPLAY_BATCH_URL="http://127.0.0.1:${DISTRIBUTION_PORT}" \
   STOCK_V4_REPLAY_ALLOW_LIQUIDITY_DISTRIBUTION_DAY=YES \
+  STOCK_V4_OPERATING_ALLOW_LIQUIDITY_DISTRIBUTION_DAY="${OPERATING_DAY_ALLOW}" \
     bash "${SCRIPT_DIR}/run-stock-v4-liquidity-distribution-day.sh" \
       2>&1 | tee "${current_day_log}"
   day_exit_code="${PIPESTATUS[0]}"

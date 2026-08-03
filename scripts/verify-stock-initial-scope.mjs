@@ -115,6 +115,15 @@ const files = {
   stockV4ReplaySymbolMaturityRunner: read(
     "scripts/promote-stock-v4-replay-symbol-mature.sh",
   ),
+  stockV4LiquidityDistributionDayRunner: read(
+    "scripts/run-stock-v4-liquidity-distribution-day.sh",
+  ),
+  stockV4LiquidityDistributionCompletionRunner: read(
+    "scripts/run-stock-v4-liquidity-distribution-to-completion.sh",
+  ),
+  stockV4OperatingUnderwriterLifecycleRunner: read(
+    "scripts/run-stock-v4-operating-underwriter-lifecycle.sh",
+  ),
   stockV4ShareRebaseGateRunner: read(
     "scripts/run-stock-v4-share-rebase-gate.sh",
   ),
@@ -1039,6 +1048,52 @@ const checks = [
       )
       && !files.stockV4ReplaySymbolMaturityRunner.includes(
         "--database=STOCK_SERVICE",
+      ),
+  ],
+  [
+    "V4 operating underwriter runners require exact schemas and explicit mutation gates",
+    includesAll(files.stockV4ReplayBatchRunner, [
+      'TARGET_ENVIRONMENT="${STOCK_V4_TARGET_ENVIRONMENT:-replay}"',
+      "STOCK_V4_OPERATING_ALLOW_BATCH",
+      "exact STOCK_SERVICE and STOCK_BATCH_METADATA schemas",
+      '"--ssl-mode=DISABLED"',
+    ])
+      && includesAll(files.stockV4LiquidityDistributionDayRunner, [
+        "STOCK_V4_OPERATING_ALLOW_LIQUIDITY_DISTRIBUTION_DAY",
+        "operating liquidity-distribution day requires exact STOCK_SERVICE schema",
+        '"--ssl-mode=DISABLED"',
+      ])
+      && includesAll(files.stockV4LiquidityDistributionCompletionRunner, [
+        "STOCK_V4_OPERATING_ALLOW_LIQUIDITY_DISTRIBUTION_COMPLETION",
+        "operating liquidity-distribution completion requires exact STOCK_SERVICE and STOCK_BATCH_METADATA schemas",
+        'STOCK_V4_OPERATING_ALLOW_BATCH="${OPERATING_BATCH_ALLOW}"',
+        'STOCK_V4_OPERATING_ALLOW_LIQUIDITY_DISTRIBUTION_DAY="${OPERATING_DAY_ALLOW}"',
+        '"--ssl-mode=DISABLED"',
+      ])
+      && includesAll(files.stockV4ReplaySymbolMaturityRunner, [
+        "STOCK_V4_OPERATING_ALLOW_MATURITY_PROMOTION",
+        "operating maturity promotion requires exact STOCK_SERVICE schema",
+        '"--ssl-mode=DISABLED"',
+      ])
+      && includesAll(files.stockV4OperatingUnderwriterLifecycleRunner, [
+        "STOCK_V4_OPERATING_ALLOW_UNDERWRITER_LIFECYCLE",
+        "exact STOCK_SERVICE and STOCK_BATCH_METADATA schemas",
+        "require_quiescent_regular_clock",
+        "require_global_quiescence",
+        "require_contract_boundary",
+        "ISSUE_UNDERWRITER",
+        "LIQUIDITY_PROVIDER",
+        '"--ssl-mode=DISABLED"',
+        "check-only finished without mutation",
+      ])
+      && !files.stockV4OperatingUnderwriterLifecycleRunner.includes(
+        "DROP DATABASE",
+      )
+      && !files.stockV4OperatingUnderwriterLifecycleRunner.includes(
+        "UPDATE stock_holding",
+      )
+      && !files.stockV4OperatingUnderwriterLifecycleRunner.includes(
+        "UPDATE stock_account",
       ),
   ],
   [

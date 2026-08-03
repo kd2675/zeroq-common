@@ -20,6 +20,7 @@ REPLAY_BATCH_PORT="${STOCK_V4_REPLAY_BATCH_PORT:-30491}"
 REPLAY_UNDERWRITER_DAILY_SUBMISSION_RATE="${STOCK_V4_REPLAY_UNDERWRITER_DAILY_SUBMISSION_RATE:-0.100000}"
 REPLAY_UNDERWRITER_SINGLE_ORDER_RATE="${STOCK_V4_REPLAY_UNDERWRITER_SINGLE_ORDER_RATE:-0.020000}"
 REPLAY_UNDERWRITER_DAILY_ORDER_LIMIT="${STOCK_V4_REPLAY_UNDERWRITER_DAILY_ORDER_LIMIT:-20}"
+TARGET_ENVIRONMENT="${STOCK_V4_TARGET_ENVIRONMENT:-replay}"
 CHECK_ONLY=false
 RUN_MODE="manual"
 RESUME_SCALED_MARKET=false
@@ -55,16 +56,31 @@ for argument in "$@"; do
   esac
 done
 
-if [[ ! "${REPLAY_SCHEMA}" =~ ^STOCK_V4_REPLAY_[A-Za-z0-9_]+$ ]]; then
-  printf 'FAIL business replay schema must match STOCK_V4_REPLAY_[A-Za-z0-9_]+\n' >&2
-  exit 1
-fi
-if [[ "${REPLAY_SCHEMA}" =~ ^STOCK_V4_REPLAY_BATCH_ ]]; then
-  printf 'FAIL business replay schema cannot be a batch metadata schema\n' >&2
-  exit 1
-fi
-if [[ ! "${REPLAY_BATCH_SCHEMA}" =~ ^STOCK_V4_REPLAY_BATCH_[A-Za-z0-9_]+$ ]]; then
-  printf 'FAIL replay batch schema must match STOCK_V4_REPLAY_BATCH_[A-Za-z0-9_]+\n' >&2
+if [[ "${TARGET_ENVIRONMENT}" == "operating" ]]; then
+  if [[ "${STOCK_V4_OPERATING_ALLOW_BATCH:-}" != "YES" ]]; then
+    printf 'FAIL operating batch target requires STOCK_V4_OPERATING_ALLOW_BATCH=YES\n' >&2
+    exit 1
+  fi
+  if [[ "${REPLAY_SCHEMA}" != "STOCK_SERVICE" \
+      || "${REPLAY_BATCH_SCHEMA}" != "STOCK_BATCH_METADATA" ]]; then
+    printf 'FAIL operating batch target requires exact STOCK_SERVICE and STOCK_BATCH_METADATA schemas\n' >&2
+    exit 1
+  fi
+elif [[ "${TARGET_ENVIRONMENT}" == "replay" ]]; then
+  if [[ ! "${REPLAY_SCHEMA}" =~ ^STOCK_V4_REPLAY_[A-Za-z0-9_]+$ ]]; then
+    printf 'FAIL business replay schema must match STOCK_V4_REPLAY_[A-Za-z0-9_]+\n' >&2
+    exit 1
+  fi
+  if [[ "${REPLAY_SCHEMA}" =~ ^STOCK_V4_REPLAY_BATCH_ ]]; then
+    printf 'FAIL business replay schema cannot be a batch metadata schema\n' >&2
+    exit 1
+  fi
+  if [[ ! "${REPLAY_BATCH_SCHEMA}" =~ ^STOCK_V4_REPLAY_BATCH_[A-Za-z0-9_]+$ ]]; then
+    printf 'FAIL replay batch schema must match STOCK_V4_REPLAY_BATCH_[A-Za-z0-9_]+\n' >&2
+    exit 1
+  fi
+else
+  printf 'FAIL STOCK_V4_TARGET_ENVIRONMENT must be replay or operating\n' >&2
   exit 1
 fi
 if [[ "${REPLAY_SCHEMA}" == "${REPLAY_BATCH_SCHEMA}" ]]; then
@@ -117,7 +133,7 @@ assert_equals() {
 }
 
 assert_equals \
-  "isolated schemas exist" \
+  "${TARGET_ENVIRONMENT} schemas exist" \
   "2" \
   "
   SELECT COUNT(*)
@@ -142,7 +158,11 @@ assert_equals \
    WHERE table_schema = '${REPLAY_BATCH_SCHEMA}'
   "
 
-printf 'PASS operating STOCK_SERVICE and STOCK_BATCH_METADATA are outside replay targets\n'
+if [[ "${TARGET_ENVIRONMENT}" == "replay" ]]; then
+  printf 'PASS operating STOCK_SERVICE and STOCK_BATCH_METADATA are outside replay targets\n'
+else
+  printf 'PASS exact operating schemas are explicitly authorized for this batch run\n'
+fi
 if [[ "${RUN_MODE}" == "manual" ]]; then
   printf 'PASS all automatic business schedulers, signal polling, and clock mutation will be disabled\n'
 elif [[ "${RUN_MODE}" == "eod-transition" ]]; then
@@ -150,7 +170,8 @@ elif [[ "${RUN_MODE}" == "eod-transition" ]]; then
     printf 'FAIL eod-transition requires STOCK_V4_REPLAY_ALLOW_EOD_TRANSITION=YES\n' >&2
     exit 1
   fi
-  printf 'PASS EOD transition is explicitly authorized for isolated replay schemas\n'
+  printf 'PASS EOD transition is explicitly authorized for %s schemas\n' \
+    "${TARGET_ENVIRONMENT}"
   printf 'PASS trading, execution, role-order, signal, cash-flow, and clock schedulers remain disabled\n'
   printf 'PASS market data uses replay-fixed so the EOD transition does not move prices\n'
 elif [[ "${RUN_MODE}" == "checkpoint-trading" ]]; then
@@ -367,8 +388,8 @@ else
 fi
 
 if [[ "${CHECK_ONLY}" == "true" ]]; then
-  printf 'PASS replay batch %s launch preflight completed without starting a service\n' \
-    "${RUN_MODE}"
+  printf 'PASS %s batch %s launch preflight completed without starting a service\n' \
+    "${TARGET_ENVIRONMENT}" "${RUN_MODE}"
   exit 0
 fi
 
@@ -483,6 +504,7 @@ elif [[ "${RUN_MODE}" == "eod-transition" ]]; then
   export STOCK_BATCH_POST_CLOSE_COORDINATOR_ENABLED=true
   export STOCK_BATCH_POST_CLOSE_COORDINATOR_POLL_FIXED_DELAY_MS=1000
   export STOCK_BATCH_POST_CLOSE_REPORT_AGGREGATION_ENABLED=true
+  export STOCK_BATCH_POST_CLOSE_POSITION_STATE_ACCOUNT_CHUNK_SIZE="${STOCK_V4_REPLAY_POSITION_STATE_ACCOUNT_CHUNK_SIZE:-100}"
   export STOCK_BATCH_POST_CLOSE_READINESS_ENABLED=true
   export STOCK_BATCH_SETTLEMENT_ENABLED=true
 elif [[ "${RUN_MODE}" == "checkpoint-trading"
@@ -513,7 +535,7 @@ else
   export STOCK_BATCH_SETTLEMENT_ENABLED=false
 fi
 
-printf 'INFO starting isolated %s stock batch on port %s\n' \
-  "${RUN_MODE}" "${REPLAY_BATCH_PORT}"
+printf 'INFO starting %s %s stock batch on port %s\n' \
+  "${TARGET_ENVIRONMENT}" "${RUN_MODE}" "${REPLAY_BATCH_PORT}"
 cd "${ROOT_DIR}"
 exec ./gradlew :stock-batch-service:bootRun --no-daemon
