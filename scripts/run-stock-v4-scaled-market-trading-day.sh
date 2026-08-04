@@ -18,6 +18,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 : "${STOCK_BATCH_INTERNAL_TOKEN:?STOCK_BATCH_INTERNAL_TOKEN is required}"
 
 REPLAY_SCHEMA="${STOCK_MYSQL_REPLAY_SCHEMA}"
+TARGET_ENVIRONMENT="${STOCK_V4_TARGET_ENVIRONMENT:-replay}"
+OPERATING_BATCH_ALLOW=""
 BACK_URL="${STOCK_V4_REPLAY_BACK_URL:-http://127.0.0.1:30493}"
 BATCH_PORT="${STOCK_V4_REPLAY_BATCH_PORT:-30491}"
 ADMIN_USER_KEY="${STOCK_V4_REPLAY_ADMIN_USER_KEY:-codex-replay-admin}"
@@ -38,13 +40,29 @@ elif [[ $# -gt 0 ]]; then
   exit 1
 fi
 
-if [[ ! "${REPLAY_SCHEMA}" =~ ^STOCK_V4_REPLAY_[A-Za-z0-9_]+$ ]] \
-    || [[ "${REPLAY_SCHEMA}" =~ ^STOCK_V4_REPLAY_BATCH_ ]]; then
-  printf 'FAIL business replay schema must match STOCK_V4_REPLAY_[A-Za-z0-9_]+\n' >&2
-  exit 1
-fi
-if [[ ! "${STOCK_MYSQL_REPLAY_BATCH_SCHEMA}" =~ ^STOCK_V4_REPLAY_BATCH_[A-Za-z0-9_]+$ ]]; then
-  printf 'FAIL replay batch schema must match STOCK_V4_REPLAY_BATCH_[A-Za-z0-9_]+\n' >&2
+if [[ "${TARGET_ENVIRONMENT}" == "operating" ]]; then
+  if [[ "${STOCK_V4_OPERATING_ALLOW_SCALED_MARKET_DAY:-}" != "YES" ]]; then
+    printf 'FAIL operating scaled-market day requires STOCK_V4_OPERATING_ALLOW_SCALED_MARKET_DAY=YES\n' >&2
+    exit 1
+  fi
+  if [[ "${REPLAY_SCHEMA}" != "STOCK_SERVICE" \
+      || "${STOCK_MYSQL_REPLAY_BATCH_SCHEMA}" != "STOCK_BATCH_METADATA" ]]; then
+    printf 'FAIL operating scaled-market day requires exact STOCK_SERVICE and STOCK_BATCH_METADATA schemas\n' >&2
+    exit 1
+  fi
+  OPERATING_BATCH_ALLOW="YES"
+elif [[ "${TARGET_ENVIRONMENT}" == "replay" ]]; then
+  if [[ ! "${REPLAY_SCHEMA}" =~ ^STOCK_V4_REPLAY_[A-Za-z0-9_]+$ ]] \
+      || [[ "${REPLAY_SCHEMA}" =~ ^STOCK_V4_REPLAY_BATCH_ ]]; then
+    printf 'FAIL business replay schema must match STOCK_V4_REPLAY_[A-Za-z0-9_]+\n' >&2
+    exit 1
+  fi
+  if [[ ! "${STOCK_MYSQL_REPLAY_BATCH_SCHEMA}" =~ ^STOCK_V4_REPLAY_BATCH_[A-Za-z0-9_]+$ ]]; then
+    printf 'FAIL replay batch schema must match STOCK_V4_REPLAY_BATCH_[A-Za-z0-9_]+\n' >&2
+    exit 1
+  fi
+else
+  printf 'FAIL STOCK_V4_TARGET_ENVIRONMENT must be replay or operating\n' >&2
   exit 1
 fi
 if [[ "${REPLAY_SCHEMA}" == "${STOCK_MYSQL_REPLAY_BATCH_SCHEMA}" ]]; then
@@ -86,6 +104,7 @@ MYSQL_CONNECTION_ARGS=(
   "--port=${STOCK_MYSQL_PORT}"
   "--user=${STOCK_MYSQL_USER}"
   "--connect-timeout=10"
+  "--ssl-mode=DISABLED"
   "--default-character-set=utf8mb4"
   "--batch"
   "--skip-column-names"
@@ -302,6 +321,7 @@ batch_mode_argument="--scaled-market-trading"
 if [[ "${RESUME_DAY}" == "true" ]]; then
   batch_mode_argument="--resume-scaled-market-trading"
 fi
+STOCK_V4_OPERATING_ALLOW_BATCH="${OPERATING_BATCH_ALLOW}" \
 STOCK_V4_REPLAY_ALLOW_SCALED_MARKET_TRADING=YES \
   bash "${SCRIPT_DIR}/run-stock-v4-replay-batch.sh" \
     --check-only "${batch_mode_argument}"
@@ -319,6 +339,7 @@ trap cleanup EXIT INT TERM
 
 batch_log="/tmp/stock-v4-scaled-market-day-${BATCH_PORT}-$$.log"
 STOCK_V4_REPLAY_BATCH_PORT="${BATCH_PORT}" \
+STOCK_V4_OPERATING_ALLOW_BATCH="${OPERATING_BATCH_ALLOW}" \
 STOCK_V4_REPLAY_ALLOW_SCALED_MARKET_TRADING=YES \
   bash "${SCRIPT_DIR}/run-stock-v4-replay-batch.sh" \
     "${batch_mode_argument}" >"${batch_log}" 2>&1 &

@@ -184,6 +184,151 @@ contract_state() {
   "
 }
 
+ensure_checkpoint_funding() {
+  local required_quantity="$1"
+  local funding_row
+  local target_account_id
+  local target_cash
+  local funding_cash
+  local current_price
+  local price_limit_rate
+  local required_cash
+  local cash_shortfall
+  local latest_cash_flow_id
+  local payload
+  local response
+  local reconciliation
+  local expected_combined
+  local expected_reconciliation
+
+  funding_row="$(mysql_query "
+    SELECT mandate.account_id,
+           target_account.cash_balance,
+           funding_account.cash_balance,
+           price.current_price,
+           instrument.price_limit_rate,
+           CAST(
+             CEILING(
+               price.current_price
+                 * (1 + instrument.price_limit_rate / 100)
+                 * ${required_quantity}
+                 * 100
+             ) / 100 AS DECIMAL(24,2)
+           ) AS required_cash,
+           CAST(
+             GREATEST(
+               CEILING(
+                 price.current_price
+                   * (1 + instrument.price_limit_rate / 100)
+                   * ${required_quantity}
+                   * 100
+               ) / 100
+                 - target_account.cash_balance
+                 - funding_account.cash_balance,
+               0
+             ) AS DECIMAL(24,2)
+           ) AS cash_shortfall,
+           COALESCE((
+             SELECT MAX(flow.id)
+               FROM stock_account_cash_flow flow
+              WHERE flow.account_id = mandate.account_id
+           ), 0)
+      FROM stock_liquidity_mandate mandate
+      JOIN stock_account target_account
+        ON target_account.id = mandate.account_id
+       AND target_account.status = 'ACTIVE'
+      JOIN stock_account funding_account
+        ON funding_account.id = ${FUNDING_ACCOUNT_ID}
+       AND funding_account.status = 'ACTIVE'
+      JOIN stock_order_book_instrument instrument
+        ON instrument.symbol = mandate.symbol
+      JOIN stock_price price
+        ON price.symbol = mandate.symbol
+     WHERE mandate.id = ${TARGET_MANDATE_ID}
+       AND mandate.symbol = '${SYMBOL}'
+       AND mandate.status = 'ACTIVE'
+  ")"
+  if [[ -z "${funding_row}" \
+      || "$(printf '%s\n' "${funding_row}" | wc -l | tr -d ' ')" != "1" ]]; then
+    printf 'FAIL checkpoint funding context is not unique\n' >&2
+    exit 1
+  fi
+  IFS=$'\t' read -r target_account_id target_cash funding_cash \
+    current_price price_limit_rate required_cash cash_shortfall \
+    latest_cash_flow_id <<< "${funding_row}"
+  if [[ "${cash_shortfall}" == "0" || "${cash_shortfall}" == "0.00" ]]; then
+    printf 'PASS checkpoint funding sufficient symbol=%s required=%s targetCash=%s fundingCash=%s price=%s limitRate=%s\n' \
+      "${SYMBOL}" "${required_cash}" "${target_cash}" "${funding_cash}" \
+      "${current_price}" "${price_limit_rate}"
+    return 0
+  fi
+  if [[ "${STOCK_V4_OPERATING_ALLOW_LP_FUNDING:-}" != "YES" ]]; then
+    printf 'FAIL checkpoint funding shortfall=%s requires STOCK_V4_OPERATING_ALLOW_LP_FUNDING=YES\n' \
+      "${cash_shortfall}" >&2
+    exit 1
+  fi
+
+  payload="$(${JQ_BIN} -cn \
+    --arg adjustmentType 'DEPOSIT' \
+    --arg amount "${cash_shortfall}" \
+    '{adjustmentType: $adjustmentType, amount: ($amount | tonumber)}')"
+  response="$(curl -sS -X POST \
+    -H 'Content-Type: application/json' \
+    -H "X-User-Key: ${ADMIN_USER_KEY}" \
+    -H 'X-User-Role: ADMIN' \
+    --data "${payload}" \
+    "${BACK_URL}/api/stock/v1/markets/liquidity-mandates/${SYMBOL}/cash-adjustments")"
+  require_success_json "${SYMBOL} checkpoint LP funding" "${response}"
+
+  reconciliation="$(mysql_query "
+    SELECT CONCAT_WS(
+      '|',
+      target_account.cash_balance,
+      funding_account.cash_balance,
+      CAST(target_account.cash_balance + funding_account.cash_balance
+        AS DECIMAL(24,2)),
+      (SELECT COUNT(*)
+         FROM stock_account_cash_flow flow
+        WHERE flow.account_id = ${target_account_id}
+          AND flow.id > ${latest_cash_flow_id}
+          AND flow.flow_type = 'DEPOSIT'
+          AND flow.reason = 'ADMIN_DEPOSIT'
+          AND flow.amount = ${cash_shortfall}
+          AND flow.created_by = '${ADMIN_USER_KEY}')
+    )
+      FROM stock_account target_account
+      JOIN stock_account funding_account
+        ON funding_account.id = ${FUNDING_ACCOUNT_ID}
+     WHERE target_account.id = ${target_account_id}
+  ")"
+  expected_combined="$(mysql_query "
+    SELECT CAST(${target_cash} + ${cash_shortfall} + ${funding_cash}
+      AS DECIMAL(24,2))
+  ")"
+  expected_reconciliation="$(mysql_query "
+    SELECT CONCAT_WS(
+      '|',
+      CAST(${target_cash} + ${cash_shortfall} AS DECIMAL(24,2)),
+      CAST(${funding_cash} AS DECIMAL(24,2)),
+      CAST(${expected_combined} AS DECIMAL(24,2)),
+      1
+    )
+  ")"
+  if [[ "${reconciliation}" != "${expected_reconciliation}" ]]; then
+    printf 'FAIL checkpoint LP funding audit drifted expected=%s actual=%s\n' \
+      "${expected_reconciliation}" "${reconciliation}" >&2
+    exit 1
+  fi
+  if [[ "$(mysql_query "SELECT ${expected_combined} >= ${required_cash}")" != "1" ]]; then
+    printf 'FAIL checkpoint LP funding remains below required cash required=%s combined=%s\n' \
+      "${required_cash}" "${expected_combined}" >&2
+    exit 1
+  fi
+  printf 'PASS checkpoint LP funding deposited symbol=%s amount=%s required=%s combined=%s auditRows=1\n' \
+    "${SYMBOL}" "${cash_shortfall}" "${required_cash}" \
+    "${expected_combined}"
+}
+
 require_contract_boundary() {
   local row
   local tradable_quantity
@@ -267,6 +412,7 @@ schedule_checkpoint() {
 
   require_quiescent_regular_clock >/dev/null
   require_global_quiescence
+  ensure_checkpoint_funding "${required_quantity}"
   activation_response="$(curl -sS -X POST \
     -H 'Content-Type: application/json' \
     -H "X-User-Key: ${ADMIN_USER_KEY}" \

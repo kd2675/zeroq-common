@@ -124,6 +124,12 @@ const files = {
   stockV4OperatingUnderwriterLifecycleRunner: read(
     "scripts/run-stock-v4-operating-underwriter-lifecycle.sh",
   ),
+  stockV4RoleRedistributionCompletionRunner: read(
+    "scripts/run-stock-v4-role-redistribution-to-completion.sh",
+  ),
+  stockV4RoleRedistributionDayRunner: read(
+    "scripts/run-stock-v4-role-redistribution-day.sh",
+  ),
   stockV4ShareRebaseGateRunner: read(
     "scripts/run-stock-v4-share-rebase-gate.sh",
   ),
@@ -963,8 +969,13 @@ const checks = [
       "executions=rows|buyQuantity|buyTurnover",
       "intents=count|completed|active",
       "scaled-market regular day stopped for EOD",
+      "STOCK_V4_OPERATING_ALLOW_SCALED_MARKET_DAY",
+      "operating scaled-market day requires exact STOCK_SERVICE and STOCK_BATCH_METADATA schemas",
+      'STOCK_V4_OPERATING_ALLOW_BATCH="${OPERATING_BATCH_ALLOW}"',
     ])
-      && !files.stockV4ScaledMarketTradingDayRunner.includes("STOCK_SERVICE")
+      && !files.stockV4ScaledMarketTradingDayRunner.includes(
+        "--database=STOCK_SERVICE",
+      )
       && !files.stockV4ScaledMarketTradingDayRunner.includes("DROP DATABASE"),
   ],
   [
@@ -1083,8 +1094,34 @@ const checks = [
         "require_contract_boundary",
         "ISSUE_UNDERWRITER",
         "LIQUIDITY_PROVIDER",
+        "STOCK_V4_OPERATING_ALLOW_LP_FUNDING",
+        "checkpoint LP funding deposited",
+        "/liquidity-mandates/${SYMBOL}/cash-adjustments",
+        "ADMIN_DEPOSIT",
         '"--ssl-mode=DISABLED"',
         "check-only finished without mutation",
+      ])
+      && includesAll(files.stockV4ShareRebaseGateRunner, [
+        "STOCK_V4_OPERATING_ALLOW_SHARE_REBASE_GATE",
+        "operating share-rebase gate requires exact STOCK_SERVICE and STOCK_BATCH_METADATA schemas",
+        'STOCK_V4_OPERATING_ALLOW_BATCH="${OPERATING_BATCH_ALLOW}"',
+      ])
+      && includesAll(files.stockV4ContractActivationGateRunner, [
+        "STOCK_V4_OPERATING_ALLOW_CONTRACT_ACTIVATION_GATE",
+        "operating contract-activation gate requires exact STOCK_SERVICE and STOCK_BATCH_METADATA schemas",
+        'STOCK_V4_OPERATING_ALLOW_BATCH="${OPERATING_BATCH_ALLOW}"',
+      ])
+      && includesAll(files.stockV4RoleRedistributionCompletionRunner, [
+        "STOCK_V4_OPERATING_ALLOW_ROLE_REDISTRIBUTION_COMPLETION",
+        "operating role-redistribution completion requires exact STOCK_SERVICE and STOCK_BATCH_METADATA schemas",
+        "operating role redistribution forbids bulk completion",
+        'STOCK_V4_OPERATING_ALLOW_BATCH="${OPERATING_BATCH_ALLOW}"',
+        'STOCK_V4_OPERATING_ALLOW_ROLE_REDISTRIBUTION_DAY="${OPERATING_DAY_ALLOW}"',
+      ])
+      && includesAll(files.stockV4RoleRedistributionDayRunner, [
+        "STOCK_V4_OPERATING_ALLOW_ROLE_REDISTRIBUTION_DAY",
+        "operating role-redistribution day requires exact STOCK_SERVICE schema",
+        "operating role redistribution forbids bulk completion",
       ])
       && !files.stockV4OperatingUnderwriterLifecycleRunner.includes(
         "DROP DATABASE",

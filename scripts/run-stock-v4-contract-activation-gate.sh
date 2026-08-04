@@ -31,13 +31,31 @@ if [[ "${STOCK_V4_REPLAY_ALLOW_CONTRACT_ACTIVATION_GATE:-}" != "YES" ]]; then
   printf 'FAIL contract-activation gate requires STOCK_V4_REPLAY_ALLOW_CONTRACT_ACTIVATION_GATE=YES\n' >&2
   exit 1
 fi
-if [[ ! "${STOCK_MYSQL_REPLAY_SCHEMA}" =~ ^STOCK_V4_REPLAY_[A-Za-z0-9_]+$ ]] \
-    || [[ "${STOCK_MYSQL_REPLAY_SCHEMA}" =~ ^STOCK_V4_REPLAY_BATCH_ ]]; then
-  printf 'FAIL business replay schema must match STOCK_V4_REPLAY_[A-Za-z0-9_]+\n' >&2
-  exit 1
-fi
-if [[ ! "${STOCK_MYSQL_REPLAY_BATCH_SCHEMA}" =~ ^STOCK_V4_REPLAY_BATCH_[A-Za-z0-9_]+$ ]]; then
-  printf 'FAIL batch replay schema must match STOCK_V4_REPLAY_BATCH_[A-Za-z0-9_]+\n' >&2
+TARGET_ENVIRONMENT="${STOCK_V4_TARGET_ENVIRONMENT:-replay}"
+OPERATING_BATCH_ALLOW=""
+if [[ "${TARGET_ENVIRONMENT}" == "operating" ]]; then
+  if [[ "${STOCK_V4_OPERATING_ALLOW_CONTRACT_ACTIVATION_GATE:-}" != "YES" ]]; then
+    printf 'FAIL operating contract-activation gate requires STOCK_V4_OPERATING_ALLOW_CONTRACT_ACTIVATION_GATE=YES\n' >&2
+    exit 1
+  fi
+  if [[ "${STOCK_MYSQL_REPLAY_SCHEMA}" != "STOCK_SERVICE" \
+      || "${STOCK_MYSQL_REPLAY_BATCH_SCHEMA}" != "STOCK_BATCH_METADATA" ]]; then
+    printf 'FAIL operating contract-activation gate requires exact STOCK_SERVICE and STOCK_BATCH_METADATA schemas\n' >&2
+    exit 1
+  fi
+  OPERATING_BATCH_ALLOW="YES"
+elif [[ "${TARGET_ENVIRONMENT}" == "replay" ]]; then
+  if [[ ! "${STOCK_MYSQL_REPLAY_SCHEMA}" =~ ^STOCK_V4_REPLAY_[A-Za-z0-9_]+$ ]] \
+      || [[ "${STOCK_MYSQL_REPLAY_SCHEMA}" =~ ^STOCK_V4_REPLAY_BATCH_ ]]; then
+    printf 'FAIL business replay schema must match STOCK_V4_REPLAY_[A-Za-z0-9_]+\n' >&2
+    exit 1
+  fi
+  if [[ ! "${STOCK_MYSQL_REPLAY_BATCH_SCHEMA}" =~ ^STOCK_V4_REPLAY_BATCH_[A-Za-z0-9_]+$ ]]; then
+    printf 'FAIL batch replay schema must match STOCK_V4_REPLAY_BATCH_[A-Za-z0-9_]+\n' >&2
+    exit 1
+  fi
+else
+  printf 'FAIL STOCK_V4_TARGET_ENVIRONMENT must be replay or operating\n' >&2
   exit 1
 fi
 if [[ "${STOCK_MYSQL_REPLAY_SCHEMA}" == "${STOCK_MYSQL_REPLAY_BATCH_SCHEMA}" ]]; then
@@ -128,6 +146,7 @@ MYSQL_CONNECTION_ARGS=(
   "--port=${STOCK_MYSQL_PORT}"
   "--user=${STOCK_MYSQL_USER}"
   "--connect-timeout=10"
+  "--ssl-mode=DISABLED"
   "--default-character-set=utf8mb4"
   "--batch"
   "--raw"
@@ -405,10 +424,9 @@ assert_plan_shapes() {
          OR planned.target_daily_volume
               <> target.target_daily_volume
          OR planned.target_max_order_quantity <>
-              CEILING(
-                CAST(planned.source_max_order_quantity AS DECIMAL(30, 0))
-                * planned.target_tradable_shares
-                / planned.source_tradable_shares
+              LEAST(
+                planned.target_tradable_shares,
+                CEILING(planned.target_daily_volume * 0.120000)
               )
        )
     "
@@ -1086,6 +1104,7 @@ start_batch() {
     exit 1
   fi
   batch_log="/tmp/stock-v4-contract-activation-${BATCH_PORT}-$$.log"
+  STOCK_V4_OPERATING_ALLOW_BATCH="${OPERATING_BATCH_ALLOW}" \
   STOCK_V4_REPLAY_BATCH_PORT="${BATCH_PORT}" \
   STOCK_V4_REPLAY_ALLOW_EOD_TRANSITION=YES \
     bash "${SCRIPT_DIR}/run-stock-v4-replay-batch.sh" \

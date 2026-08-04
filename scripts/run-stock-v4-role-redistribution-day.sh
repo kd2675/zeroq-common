@@ -15,9 +15,24 @@ if [[ "${STOCK_V4_REPLAY_ALLOW_ROLE_REDISTRIBUTION_DAY:-}" != "YES" ]]; then
   printf 'FAIL role-redistribution day requires STOCK_V4_REPLAY_ALLOW_ROLE_REDISTRIBUTION_DAY=YES\n' >&2
   exit 1
 fi
-if [[ ! "${STOCK_MYSQL_REPLAY_SCHEMA}" =~ ^STOCK_V4_REPLAY_[A-Za-z0-9_]+$ ]] \
-    || [[ "${STOCK_MYSQL_REPLAY_SCHEMA}" =~ ^STOCK_V4_REPLAY_BATCH_ ]]; then
-  printf 'FAIL business replay schema must match STOCK_V4_REPLAY_[A-Za-z0-9_]+\n' >&2
+TARGET_ENVIRONMENT="${STOCK_V4_TARGET_ENVIRONMENT:-replay}"
+if [[ "${TARGET_ENVIRONMENT}" == "operating" ]]; then
+  if [[ "${STOCK_V4_OPERATING_ALLOW_ROLE_REDISTRIBUTION_DAY:-}" != "YES" ]]; then
+    printf 'FAIL operating role-redistribution day requires STOCK_V4_OPERATING_ALLOW_ROLE_REDISTRIBUTION_DAY=YES\n' >&2
+    exit 1
+  fi
+  if [[ "${STOCK_MYSQL_REPLAY_SCHEMA}" != "STOCK_SERVICE" ]]; then
+    printf 'FAIL operating role-redistribution day requires exact STOCK_SERVICE schema\n' >&2
+    exit 1
+  fi
+elif [[ "${TARGET_ENVIRONMENT}" == "replay" ]]; then
+  if [[ ! "${STOCK_MYSQL_REPLAY_SCHEMA}" =~ ^STOCK_V4_REPLAY_[A-Za-z0-9_]+$ ]] \
+      || [[ "${STOCK_MYSQL_REPLAY_SCHEMA}" =~ ^STOCK_V4_REPLAY_BATCH_ ]]; then
+    printf 'FAIL business replay schema must match STOCK_V4_REPLAY_[A-Za-z0-9_]+\n' >&2
+    exit 1
+  fi
+else
+  printf 'FAIL STOCK_V4_TARGET_ENVIRONMENT must be replay or operating\n' >&2
   exit 1
 fi
 if [[ ! "${STOCK_V4_REPLAY_ROLE_REDISTRIBUTION_PLAN_ID}" =~ ^[1-9][0-9]*$ ]]; then
@@ -55,6 +70,11 @@ fi
 if [[ "${BULK_COMPLETION}" == "true" \
     && "${STOCK_V4_REPLAY_ALLOW_ROLE_REDISTRIBUTION_BULK_COMPLETION:-}" != "YES" ]]; then
   printf 'FAIL bulk role redistribution requires STOCK_V4_REPLAY_ALLOW_ROLE_REDISTRIBUTION_BULK_COMPLETION=YES\n' >&2
+  exit 1
+fi
+if [[ "${TARGET_ENVIRONMENT}" == "operating" \
+    && "${BULK_COMPLETION}" == "true" ]]; then
+  printf 'FAIL operating role redistribution forbids bulk completion\n' >&2
   exit 1
 fi
 
