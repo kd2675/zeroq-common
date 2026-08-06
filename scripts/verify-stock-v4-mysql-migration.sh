@@ -267,6 +267,7 @@ MIGRATION_FILES=(
   "stock_scaled_market_contract_activation_alter.sql"
   "stock_liquidity_provider_adaptive_execution_alter.sql"
   "stock_scaled_market_role_capacity_alter.sql"
+  "stock_institution_participation_contract_alter.sql"
   "stock_scaled_market_role_redistribution_alter.sql"
   "stock_underwriter_distribution_checkpoint_alter.sql"
   "stock_scaled_market_liquidity_distribution_alter.sql"
