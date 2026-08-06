@@ -287,6 +287,15 @@ const checks = [
     "symbol: selectedSymbol",
     "ACTIVITY_PREVIEW_LIMIT",
   ])],
+  ["market tape and summary count paired account rows as one trade", includesAll(files.supplyDemand + files.reports, [
+    "매수·매도 계좌 원장 한 쌍을 실제 거래 1건으로 표시합니다.",
+    "평균 체결량",
+    "BUY 합계 = SELL 합계 = (BUY+SELL)/2",
+  ]) && !includesAny(files.supplyDemand + files.types, [
+    "executionStrength",
+    "매수체결",
+    "매도체결",
+  ])],
   ["order book page selects symbol from loaded instruments", includesAll(files.supplyDemand, [
     "useOrderBookTicketState",
     "setOrderBookTicket",
@@ -400,6 +409,25 @@ const checks = [
     "OTHER_CORPORATION",
     "개인·외국인·기관계·기타법인",
   ])],
+  ["admin market index preserves the trade-date price source handoff", includesAll(
+    files.stockApi + files.queryLayer + files.types + files.supplyDemandAdmin,
+    [
+      "AdminMarketIndex",
+      "AdminMarketFlowSourceStatus",
+      "LIVE_CURRENT_PRICE",
+      "POST_CLOSE_FROZEN",
+      "CLOSED_SNAPSHOT",
+      "getAdminMarketIndex",
+      "/api/stock/v1/markets/admin/market-index",
+      "adminMarketIndexQueryOptions",
+      "AdminMarketIndexPanel",
+      "전체 장 지수",
+      "장마감 고정 · 스냅샷 대기",
+      "simulationTradeDate",
+      "sourceStatus",
+      "refetchIntervalInBackground: false",
+    ],
+  )],
   ["public instrument market reports are wired", includesAll(files.stockApi + files.types + files.reports, [
     "InstrumentMarketReport",
     "getInstrumentMarketReport",
