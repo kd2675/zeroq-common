@@ -26,7 +26,7 @@
 
 | 경로 | 문서 |
 |---|---|
-| `stock-back-service/` | `README.md`, `AGENTS.md`, `STOCK_MARKET_FEATURE_ROADMAP.md`, `docs/market-simulation/00-overview.md`, `docs/market-simulation/13-code-ownership-map.md`, `docs/market-simulation/14-feature-change-playbooks.md`, `docs/market-simulation/15-corporate-action-scope.md`, `docs/market-simulation/16-initial-essential-scope-audit.md`, `docs/market-simulation/17-essential-completion-evidence.md`, `docs/market-simulation/21-kospi-one-hundredth-v4-reconstruction-plan.md`, `docs/market-simulation/feature-handbook/`, `docs/market-simulation/development-specs/` |
+| `stock-back-service/` | `README.md`, `AGENTS.md`, `STOCK_MARKET_FEATURE_ROADMAP.md`, `docs/market-simulation/00-overview.md`, `docs/market-simulation/13-code-ownership-map.md`, `docs/market-simulation/14-feature-change-playbooks.md`, `docs/market-simulation/15-corporate-action-scope.md`, `docs/market-simulation/16-initial-essential-scope-audit.md`, `docs/market-simulation/17-essential-completion-evidence.md`, `docs/market-simulation/21-kospi-one-hundredth-v5-fresh-start.md`, `docs/market-simulation/feature-handbook/`, `docs/market-simulation/development-specs/` |
 | `stock-batch-service/` | `README.md`, `AGENTS.md`, `docs/architecture.md`, `docs/stock-eod-refactoring-plan-2026-07-15.md` |
 | `stock-front-service/` | `README.md`, `AGENTS.md` |
 
@@ -66,7 +66,7 @@
 12. Stock 항목별 개발 핸드오프가 필요하면 `stock-back-service/docs/market-simulation/feature-handbook/00-index.md`
 13. Stock 실제 코드 변경 시작점이 필요하면 `stock-back-service/docs/market-simulation/development-specs/00-index.md`
 14. Stock 장마감·정산·야간 후처리 또는 주문·체결 부하 보호 작업이면 `stock-batch-service/docs/stock-eod-refactoring-plan-2026-07-15.md`
-15. Stock KOSPI 1/100 시장·V4 재구성이면 `stock-back-service/docs/market-simulation/21-kospi-one-hundredth-v4-reconstruction-plan.md`
+15. Stock KOSPI 1/100 시장·V5 신규 시작이면 `stock-back-service/docs/market-simulation/21-kospi-one-hundredth-v5-fresh-start.md`
 16. Muse 작업이면 `muse-back-service/AGENTS_MUSE_CONTEST_UNIFIED.md`
 17. Semo 기능 추가/재구성이면 `semo-front-service/AGENTS_SEMO_MORE_FEATURE_CHECKLIST.md`
 18. Semo 제품 방향 판단이면 `semo-front-service/AGENTS_SEMO_PRODUCT_DIRECTION.md`

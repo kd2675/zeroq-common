@@ -80,82 +80,17 @@ const files = {
   stockH2Smoke: read("scripts/stock-h2-smoke.sh"),
   stockGatewayH2Smoke: read("scripts/stock-gateway-h2-smoke.sh"),
   stockAuthH2Smoke: read("scripts/stock-auth-h2-smoke.sh"),
-  stockV4MysqlMigrationVerifier: read("scripts/verify-stock-v4-mysql-migration.sh"),
-  stockV4BaselineExporter: read("scripts/export-stock-v4-baseline-readonly.sh"),
-  stockV4BaselineArtifactVerifier: read(
-    "scripts/verify-stock-v4-baseline-artifact.mjs",
+  stockV5FreshStartMigration: read(
+    "stock-back-service/src/main/resources/db/ddl/stock_auto_participant_v5_fresh_start_alter.sql",
   ),
-  stockV4BaselineSqlEmitter: read(
-    "scripts/emit-stock-v4-baseline-insert-sql.mjs",
+  stockV5Kernel: read(
+    "stock-batch-service/src/main/java/stock/batch/service/automarket/v5/AutoParticipantV5Kernel.java",
   ),
-  stockV4ReplaySchemaPreparer: read(
-    "scripts/prepare-stock-v4-replay-schema.sh",
+  stockV5ProfileCatalog: read(
+    "stock-batch-service/src/main/java/stock/batch/service/automarket/v5/profile/V5ProfileAlgorithmCatalog.java",
   ),
-  stockV4ReplayBatchMetadataPreparer: read(
-    "scripts/prepare-stock-v4-replay-batch-metadata.sh",
-  ),
-  stockV4ReplayBatchRunner: read(
-    "scripts/run-stock-v4-replay-batch.sh",
-  ),
-  stockV4UnderwriterCheckpointDayRunner: read(
-    "scripts/run-stock-v4-underwriter-checkpoint-day.sh",
-  ),
-  stockV4EodAdvanceRunner: read(
-    "scripts/run-stock-v4-eod-to-next-open.sh",
-  ),
-  stockV4UnderwriterCheckpointCompletionRunner: read(
-    "scripts/run-stock-v4-underwriter-checkpoint-to-completion.sh",
-  ),
-  stockV4ReplayCounterpartyCashRunner: read(
-    "scripts/ensure-stock-v4-replay-counterparty-cash.sh",
-  ),
-  stockV4ReplayCheckpointCashFloorCalculator: read(
-    "scripts/calculate-stock-v4-replay-checkpoint-cash-floor.sh",
-  ),
-  stockV4ReplaySymbolMaturityRunner: read(
-    "scripts/promote-stock-v4-replay-symbol-mature.sh",
-  ),
-  stockV4LiquidityDistributionDayRunner: read(
-    "scripts/run-stock-v4-liquidity-distribution-day.sh",
-  ),
-  stockV4LiquidityDistributionCompletionRunner: read(
-    "scripts/run-stock-v4-liquidity-distribution-to-completion.sh",
-  ),
-  stockV4OperatingUnderwriterLifecycleRunner: read(
-    "scripts/run-stock-v4-operating-underwriter-lifecycle.sh",
-  ),
-  stockV4RoleRedistributionCompletionRunner: read(
-    "scripts/run-stock-v4-role-redistribution-to-completion.sh",
-  ),
-  stockV4RoleRedistributionDayRunner: read(
-    "scripts/run-stock-v4-role-redistribution-day.sh",
-  ),
-  stockV4ShareRebaseGateRunner: read(
-    "scripts/run-stock-v4-share-rebase-gate.sh",
-  ),
-  stockV4ContractActivationGateRunner: read(
-    "scripts/run-stock-v4-contract-activation-gate.sh",
-  ),
-  stockV4ScaledMarketTradingDayRunner: read(
-    "scripts/run-stock-v4-scaled-market-trading-day.sh",
-  ),
-  stockV4ReplayBackRunner: read(
-    "scripts/run-stock-v4-replay-back.sh",
-  ),
-  stockV4ReplayFixedPriceProvider: read(
-    "stock-batch-service/src/main/java/stock/batch/service/marketdata/provider/ReplayFixedMarketPriceProvider.java",
-  ),
-  stockV4ReplayMaterializer: read(
-    "scripts/materialize-stock-v4-replay-baseline.sh",
-  ),
-  stockV4ReplayMaterializationSql: read(
-    "scripts/sql/stock-v4-replay-baseline-materialize.sql",
-  ),
-  stockV4ReplaySystemCustodyRepair: read(
-    "scripts/repair-stock-v4-replay-system-custody-identity.sh",
-  ),
-  stockV4ReplayMigrationVerifier: read(
-    "scripts/verify-stock-v4-replay-migration.sh",
+  stockV5CancellationPlanner: read(
+    "stock-batch-service/src/main/java/stock/batch/service/automarket/v5/cancellation/V5CancellationPlanner.java",
   ),
   stockBatchApplicationTest: read("stock-batch-service/src/main/resources/application-test.yml"),
   stockBackSmokeProfile: read("stock-back-service/src/main/resources/application-smoke.yml"),
@@ -273,10 +208,9 @@ const stockBackApiSurface = [
   '@GetMapping("/virtual-market")',
   '@GetMapping("/order-book-market")',
   '@GetMapping("/auto-market")',
-  '@GetMapping("/auto-market/v4/operations")',
-  '@PatchMapping("/auto-market/v4/runtime")',
-  '@PostMapping("/auto-market/v4/policies/scheduled")',
-  '@PostMapping("/auto-market/v4/policies/neutral-cutover")',
+  '@GetMapping("/auto-market/v5/operations")',
+  '@PatchMapping("/auto-market/v5/runtime")',
+  '@PostMapping("/auto-market/v5/policies/scheduled")',
   '@GetMapping("/auto-market/participants/overviews")',
   '@GetMapping("/auto-market/cash-flow")',
   '@PatchMapping("/auto-market/cash-flow")',
@@ -732,489 +666,60 @@ const checks = [
       .every((path) => !/(^|\/)(docker-compose|compose)\.ya?ml$|(^|\/)Dockerfile$|(^|\/)\.dockerignore$/i.test(path)),
   ],
   [
-    "isolated V4 MySQL verifier protects production and checks exact numeric targets",
-    includesAll(files.stockV4MysqlMigrationVerifier, [
-      "^STOCK_V4_VERIFY_[A-Za-z0-9_]+$",
-      "verification schema already exists and will not be overwritten",
-      "DROP DATABASE IF EXISTS",
-      "prepare_legacy_v3_fixture",
-      "stock_order/stock_execution index fingerprint unchanged",
-      "8|577289815|402369898|44594000000000.00|3699844",
-      "existing seven-symbol intermediate target",
-      "7|505128588|366289285|39023153275600.00|3237364",
-      "symbol share and market-capitalization arithmetic",
-      "0|0|44594000000000.00",
-      "derived target reference turnover is inside the contract band",
-      "285802591950.00|1",
-      "150|15000|100.0000|16006366331295.49|0.35893542",
-      "retired and disabled legacy V3 policy",
-      "neutral V4 draft policy count",
+    "V5 fresh start discards prior runtime and removes population amplification",
+    includesAll(files.stockV5FreshStartMigration, [
+      "V5 is a destructive, independent start",
+      "DROP TABLE IF EXISTS stock_auto_participant_v4_calibration_snapshot",
+      "DROP TABLE IF EXISTS stock_auto_participant_order_schedule",
+      "DELETE FROM stock_auto_participant_profile_config",
+      "DELETE FROM stock_auto_participant_policy_revision",
+      "target_auto_submitted_order_count",
+      "DROP COLUMN represented_participant_count",
+      "DROP COLUMN population_weight",
+      "CREATE TABLE stock_auto_participant_v5_daily_state",
+      "CREATE TABLE stock_auto_participant_v5_order_schedule",
+      "CREATE TABLE stock_auto_participant_v5_calibration_snapshot",
     ])
-      && !files.stockV4MysqlMigrationVerifier.includes("DROP DATABASE IF EXISTS STOCK_SERVICE")
-      && !files.stockV4MysqlMigrationVerifier.includes("USE STOCK_SERVICE"),
-  ],
-  [
-    "V4 baseline exporter is immutable, read-only, and preserves replay transformations",
-    includesAll(files.stockV4BaselineExporter, [
-      'BASELINE_CLOSE_RUN_ID=259',
-      'BASELINE_BUSINESS_DATE="2027-02-09"',
-      "SET TRANSACTION READ ONLY",
-      "START TRANSACTION WITH CONSISTENT SNAPSHOT",
-      "baseline market aggregate",
-      "7|26650000|19325000|333820000000.00|24108|282128590.00",
-      "baseline holding snapshot reconciliation",
-      "baseline account reconciliation",
-      "'snapshotReservedQuantity'",
-      "'replayReservedQuantity', 0",
-      "'postCancelCash'",
-      "'ACCOUNT_CASH_FLOW'",
-      "'SECURITY_ALLOCATION'",
-      "'ORDER_STRATEGY_ORIGIN'",
-      "'operationalReplayRule'",
-      "export directory already exists and will not be overwritten",
-      "baseline.ndjson.tsv",
-      "SHA256SUMS",
-    ])
-      && !/\b(?:INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|REPLACE)\b/i.test(
-        files.stockV4BaselineExporter,
+      && !files.stockV5FreshStartMigration.includes(
+        "INSERT INTO stock_auto_participant_policy_revision",
+      )
+      && !files.stockV5FreshStartMigration.includes(
+        "INSERT INTO stock_auto_participant_profile_config",
       ),
   ],
   [
-    "V4 baseline artifact verifier pins economic rows and the known broken intent basis",
-    includesAll(files.stockV4BaselineArtifactVerifier, [
-      "expectedSectionCounts",
-      '"artifact version", metadata.artifactVersion, 6',
-      '["ACCOUNT_SNAPSHOT", 179]',
-      '["ACCOUNT_CASH_FLOW", 4649]',
-      '["HOLDING_SNAPSHOT", 395]',
-      '["CORPORATE_ACTION", 8]',
-      '["CORPORATE_ACTION_ENTITLEMENT", 72]',
-      '["PROFILE_CONFIG", 27]',
-      '["AUTO_MARKET_CONFIG", 7]',
-      '["LIQUIDITY_TRANSITION", 7]',
-      '["SECURITY_ALLOCATION", 25]',
-      '["MARKET_REFERENCE_VOLUME", 14]',
-      '["UNDERWRITING_DAILY_STATE", 8]',
-      '["LIQUIDITY_DAILY_STATE", 41]',
-      '["MARKET_POLICY", 32]',
-      '["AUTO_POLICY", 1]',
-      '["ORDER", 799]',
-      '["ORDER_STRATEGY_ORIGIN", 719]',
-      '["EXECUTION", 130]',
-      '["AUTO_INTENT", 16]',
-      "26_650_000n",
-      "19_325_000n",
-      "333_820_000_000n",
-      "24_108n",
-      "59_203n",
-      '["DEMO006", 621_875n]',
-      "37_183_802n",
-      "account cash-flow net equals post-cancel cash",
-      "initial issue ledger quantity",
-      "order strategy origin references",
-      "baseline active intent count",
-      "54_283n",
-      "assertNoSensitiveKeys",
-    ]),
-  ],
-  [
-    "V4 replay loader stages the verified artifact without local-infile or production writes",
-    includesAll(files.stockV4BaselineSqlEmitter, [
-      "INSERT INTO stock_v4_replay_artifact_line",
-      "Buffer.from(value, \"utf8\").toString(\"hex\")",
-      "invalid TSV structure",
+    "V5 uses one real account, contextual profile algorithms, and profile cancellation",
+    includesAll(files.stockV5Kernel, [
+      "never creates represented orders",
+      "V5_ATTENTION_CLOCK",
+      "V5_ACTION_GATE",
+      "V5_SYMBOL_CHOICE",
     ])
-      && includesAll(files.stockV4ReplaySchemaPreparer, [
-        "^STOCK_V4_REPLAY_[A-Za-z0-9_]+$",
-        "replay schema already exists and will not be overwritten",
-        "verify-stock-v4-baseline-artifact.mjs",
-        "emit-stock-v4-baseline-insert-sql.mjs",
-        "artifact line count",
-        "7370",
-        "6|259|2027-02-09",
+      && includesAll(files.stockV5ProfileCatalog, [
+        "One explicit algorithm branch for each of the 27 V5 profiles",
+        "case NEWS_REACTIVE",
+        "case PASSIVE_LIMIT_TRADER",
+        "case WHALE",
+        "case OBSERVER",
+        "V5_SURPRISE_GATE",
       ])
-      && !files.stockV4ReplaySchemaPreparer.includes("SET GLOBAL local_infile")
-      && !files.stockV4ReplaySchemaPreparer.includes("DROP DATABASE IF EXISTS STOCK_SERVICE"),
+      && includesAll(files.stockV5CancellationPlanner, [
+        "one V5 participant changes their mind",
+        "cancellationPressure",
+        "CANCELLATION_REVIEW",
+        "PROFILE_RECONSIDERATION",
+      ])
+      && !files.stockV5Kernel.includes("populationWeight")
+      && !files.stockV5ProfileCatalog.includes("sideOrFeasible")
+      && !files.stockV5CancellationPlanner.includes("targetCancellation"),
   ],
   [
-    "V4 replay materialization preserves baseline economics and retires V3 runtime",
-    includesAll(
-      files.stockV4ReplayMaterializer
-        + files.stockV4ReplayMaterializationSql,
-      [
-        "stock_v4_replay_materialization_audit",
-        "6|259|2027-02-09|7370",
-        "7|26650000|19325000|333820000000.00|24108|282128590.00",
-        "395|26650000|59203",
-        "179|288537382484.00|151|150",
-        "4649|288537382484.00|8|72|7|7|25|37183802|14|8|41|719",
-        "materialized underwriting allocation reconciliation",
-        "materialized system-custody runtime identity",
-        "WHEN 'SYSTEM_CUSTODY' THEN 'SYSTEM_CUSTODY'",
-        "WHEN 'SYSTEM_CUSTODY' THEN 'SYSTEM_CUSTODY:DEFAULT'",
-        "stock_account_cash_flow",
-        "stock_security_allocation_ledger",
-        "stock_order_strategy_origin",
-        "DEMO004:4974998|DEMO005:1492500|DEMO006:621875|DEMO007:198999",
-        "799|130|65|24108|282128590.00|16|13|54283",
-        "'V3'",
-        "'RETIRED'",
-        "FALSE",
-        "'V4'",
-      ],
-    )
-      && !files.stockV4ReplayMaterializer.includes("--database=STOCK_SERVICE")
-      && !files.stockV4ReplayMaterializationSql.includes("USE STOCK_SERVICE"),
-  ],
-  [
-    "V4 replay system-custody repair is isolated, quiescent, and D8 pre-listing only",
-    includesAll(files.stockV4ReplaySystemCustodyRepair, [
-      "^STOCK_V4_REPLAY_[A-Za-z0-9_]+$",
-      "D8 pre-listing reconstruction boundary",
-      "quiescent replay ledgers",
-      "single active system-custody role",
-      "canonical system-custody identity conflicts",
-      "participant_code = 'SYSTEM_CUSTODY'",
-      "self_trade_group_id = 'SYSTEM_CUSTODY:DEFAULT'",
-      "repaired only the isolated replay system-custody runtime identity",
-    ])
-      && !files.stockV4ReplaySystemCustodyRepair.includes("STOCK_SERVICE")
-      && !files.stockV4ReplaySystemCustodyRepair.includes(
-        "DROP DATABASE",
-      ),
-  ],
-  [
-    "V4 replay services isolate both schemas and one-lever EOD transitions",
-    includesAll(files.stockV4ReplayBatchMetadataPreparer, [
-      "^STOCK_V4_REPLAY_BATCH_[A-Za-z0-9_]+$",
-      "replay batch schema already exists and will not be overwritten",
-      "batch-metadata-mysql.sql",
-      "batch metadata table count",
-      "batch metadata sequence basis",
-      "operating STOCK_BATCH_METADATA was not queried or changed",
-    ])
-      && !files.stockV4ReplayBatchMetadataPreparer.includes(
-        "--database=STOCK_BATCH_METADATA",
-      )
-      && !files.stockV4ReplayBatchMetadataPreparer.includes(
-        "DROP DATABASE IF EXISTS STOCK_BATCH_METADATA",
-      )
-      && includesAll(files.stockV4ReplayBatchRunner, [
-        "^STOCK_V4_REPLAY_[A-Za-z0-9_]+$",
-        "^STOCK_V4_REPLAY_BATCH_[A-Za-z0-9_]+$",
-        "business and batch metadata schemas must be different",
-        "STOCK_BATCH_SCHEDULERS_ENABLED=false",
-        "STOCK_SIMULATION_CLOCK_SCHEDULER_ENABLED=false",
-        "STOCK_BATCH_SIGNAL_ENABLED=false",
-        "STOCK_BATCH_ORDER_BOOK_EXECUTION_ENABLED=false",
-        "STOCK_BATCH_AUTO_MARKET_ENABLED=false",
-        "STOCK_BATCH_POST_CLOSE_COORDINATOR_ENABLED=false",
-        "all automatic business schedulers, signal polling, and clock mutation will be disabled",
-        "--eod-transition",
-        "STOCK_V4_REPLAY_ALLOW_EOD_TRANSITION",
-        "STOCK_BATCH_MARKET_DATA_PROVIDER=replay-fixed",
-        "--checkpoint-trading",
-        "STOCK_V4_REPLAY_ALLOW_CHECKPOINT_TRADING",
-        "only the simulation clock heartbeat is scheduled; all business jobs remain manual",
-        "STOCK_BATCH_AUTO_MARKET_PROFILE_QUEUE_SCHEDULER_ENABLED=false",
-        "STOCK_BATCH_MARKET_CLOSE_SETTLEMENT_DELAY_SIMULATION_MINUTES=0",
-        "STOCK_BATCH_ISSUE_UNDERWRITER_DAILY_SUBMISSION_RATE",
-        "STOCK_BATCH_ISSUE_UNDERWRITER_SINGLE_ORDER_RATE",
-        "STOCK_BATCH_ISSUE_UNDERWRITER_DAILY_ORDER_LIMIT",
-        "--scaled-market-trading",
-        "STOCK_V4_REPLAY_ALLOW_SCALED_MARKET_TRADING",
-        "single active scaled-market contract",
-        "V3 live and V4 active policy counts",
-        "quiescent scaled-market opening ledgers",
-        "WHERE status = 'ACTIVE'",
-        "STOCK_BATCH_EXECUTION_READY_SYMBOL_QUEUE_TYPE=memory",
-        "STOCK_BATCH_AUTO_MARKET_PROFILE_QUEUE_TYPE=memory",
-        "STOCK_BATCH_ORDER_BOOK_EXECUTION_WORKER_ENABLED=true",
-        "STOCK_BATCH_LIQUIDITY_PROVIDER_MARKET_ENABLED=true",
-        "STOCK_BATCH_INSTITUTION_MARKET_ENABLED=true",
-      ])
-      && includesAll(files.stockV4ReplayBackRunner, [
-        "^STOCK_V4_REPLAY_[A-Za-z0-9_]+$",
-        "business replay schema cannot be a batch metadata schema",
-        "both read and write pools will use the same isolated replay schema",
-        "DATABASE_DATASOURCE_PUB_MASTER_URL",
-        "DATABASE_DATASOURCE_PUB_SLAVE1_URL",
-        "STOCK_PRICE_STREAM_REDIS_LISTENER_ENABLED=false",
-      ])
-      && includesAll(files.stockV4ReplayFixedPriceProvider, [
-        'havingValue = "replay-fixed"',
-        "previousPrice",
-        "simulationClockService.currentMarketDateTime()",
-      ])
-      && !files.stockV4ReplayBatchRunner.includes("/STOCK_SERVICE?")
-      && !files.stockV4ReplayBatchRunner.includes("/STOCK_BATCH_METADATA?")
-      && !files.stockV4ReplayBackRunner.includes("/STOCK_SERVICE?"),
-  ],
-  [
-    "V4 scaled-market day runner preserves a full guarded regular session",
-    includesAll(files.stockV4ScaledMarketTradingDayRunner, [
-      "STOCK_V4_REPLAY_ALLOW_SCALED_MARKET_DAY",
-      "STOCK_V4_REPLAY_ALLOW_SCALED_MARKET_TRADING",
-      "stopped 06:00 REGULAR state at the unchanged clock speed",
-      'batch_mode_argument="--scaled-market-trading"',
-      'batch_mode_argument="--resume-scaled-market-trading"',
-      '--check-only "${batch_mode_argument}"',
-      "trading date advanced unexpectedly",
-      "scaled-market regular session reached close",
-      "assert_intraday_flow_invariants",
-      "targetBreaches|sideImbalance|invalidReservations",
-      "scaled-market batch shutdown did not preserve stopped close state",
-      "scaled-market stopped close state simulationDateTime",
-      "orders=count|quantity|filled|cancelled",
-      "executions=rows|buyQuantity|buyTurnover",
-      "intents=count|completed|active",
-      "scaled-market regular day stopped for EOD",
-      "STOCK_V4_OPERATING_ALLOW_SCALED_MARKET_DAY",
-      "operating scaled-market day requires exact STOCK_SERVICE and STOCK_BATCH_METADATA schemas",
-      'STOCK_V4_OPERATING_ALLOW_BATCH="${OPERATING_BATCH_ALLOW}"',
-    ])
-      && !files.stockV4ScaledMarketTradingDayRunner.includes(
-        "--database=STOCK_SERVICE",
-      )
-      && !files.stockV4ScaledMarketTradingDayRunner.includes("DROP DATABASE"),
-  ],
-  [
-    "V4 underwriting replay runners serialize one checkpoint and fail closed",
-    includesAll(files.stockV4UnderwriterCheckpointDayRunner, [
-      "STOCK_V4_REPLAY_ALLOW_CHECKPOINT_DAY",
-      "^STOCK_V4_REPLAY_[A-Za-z0-9_]+$",
-      "expected exactly one positive open contract sell",
-      "counterparty cash capacity is insufficient",
-      "DAILY_SUBMISSION_LIMIT_REACHED",
-      "FILLED_TARGET_REACHED",
-      "openOrders=0 reserved=0",
-    ])
-      && includesAll(files.stockV4EodAdvanceRunner, [
-        "STOCK_V4_REPLAY_ALLOW_EOD_ADVANCE",
-        "PORTFOLIO_SETTLED",
-        "NEXT_SIMULATION_DAY_START",
-        "--stop-after-reports",
-        "stopped after current-day reports",
-        "NEXT_PREOPEN_TRANSFORM_START",
-        "NEXT_AUTO_MARKET_PREPARATION_START",
-        "NEXT_MARKET_OPEN",
-        "resumes committed PRE_OPEN phase",
-        "business-date promotion",
-      ])
-      && includesAll(files.stockV4UnderwriterCheckpointCompletionRunner, [
-        "STOCK_V4_REPLAY_ALLOW_CHECKPOINT_COMPLETION",
-        "stock-v4-underwriter-completion-",
-        "business and batch replay schemas must be different",
-        "wait_for_regular_clock_stop",
-        "CLOCK_STOP_TIMEOUT_SECONDS",
-        "checkpoint simulation clock stopped",
-        "checkpoint exceeded trading-day guard",
-        "is_terminal_checkpoint_lifecycle",
-        '"COMPLETED"',
-        "terminal lifecycle",
-        "single numeric checkpoint fully completed",
-      ])
-      && includesAll(files.stockV4ReplayCounterpartyCashRunner, [
-        "STOCK_V4_REPLAY_ALLOW_COUNTERPARTY_FUNDING",
-        "STOCK_V4_REPLAY_REQUIRED_AVAILABLE_CASH",
-        "counterparty funding requires stopped aligned REGULAR state",
-        "participant_category",
-        "MANUAL_PARTICIPANT",
-        "ADMIN_DEPOSIT",
-        "/cash-adjustments",
-        "exact_audit_rows",
-      ])
-      && includesAll(files.stockV4ReplayCheckpointCashFloorCalculator, [
-        "exactly one current ACTIVE or next SCHEDULED checkpoint policy is required",
-        "requiredCheckpointQuantity",
-        "dailySubmissionQuantityLimit",
-        "singleOrderQuantityLimit",
-        "dailyOrderLimit",
-        "checkpoint-day BUY price would violate the dynamic Korean tick",
-        "requiredAvailableCash=",
-      ])
-      && includesAll(files.stockV4ReplaySymbolMaturityRunner, [
-        "STOCK_V4_REPLAY_ALLOW_MATURITY_PROMOTION",
-        "maturity promotion requires stopped PRE_OPEN/REPORTS_AGGREGATED state",
-        "CAST(instrument.enabled AS UNSIGNED)",
-        "observedDistributedShareRate",
-        "maturity already promoted and reconciled",
-        "underwriter_contract_count",
-        "active_policy_count",
-        "/promote-mature",
-        "exact_audit_rows",
-        "symbol maturity promoted",
-      ])
-      && !files.stockV4UnderwriterCheckpointDayRunner.includes(
-        "--database=STOCK_SERVICE",
-      )
-      && !files.stockV4UnderwriterCheckpointCompletionRunner.includes(
-        "--database=STOCK_SERVICE",
-      )
-      && !files.stockV4ReplayCounterpartyCashRunner.includes(
-        "--database=STOCK_SERVICE",
-      )
-      && !files.stockV4ReplayCheckpointCashFloorCalculator.includes(
-        "--database=STOCK_SERVICE",
-      )
-      && !files.stockV4ReplaySymbolMaturityRunner.includes(
-        "--database=STOCK_SERVICE",
-      ),
-  ],
-  [
-    "V4 operating underwriter runners require exact schemas and explicit mutation gates",
-    includesAll(files.stockV4ReplayBatchRunner, [
-      'TARGET_ENVIRONMENT="${STOCK_V4_TARGET_ENVIRONMENT:-replay}"',
-      "STOCK_V4_OPERATING_ALLOW_BATCH",
-      "exact STOCK_SERVICE and STOCK_BATCH_METADATA schemas",
-      '"--ssl-mode=DISABLED"',
-    ])
-      && includesAll(files.stockV4LiquidityDistributionDayRunner, [
-        "STOCK_V4_OPERATING_ALLOW_LIQUIDITY_DISTRIBUTION_DAY",
-        "operating liquidity-distribution day requires exact STOCK_SERVICE schema",
-        '"--ssl-mode=DISABLED"',
-      ])
-      && includesAll(files.stockV4LiquidityDistributionCompletionRunner, [
-        "STOCK_V4_OPERATING_ALLOW_LIQUIDITY_DISTRIBUTION_COMPLETION",
-        "operating liquidity-distribution completion requires exact STOCK_SERVICE and STOCK_BATCH_METADATA schemas",
-        'STOCK_V4_OPERATING_ALLOW_BATCH="${OPERATING_BATCH_ALLOW}"',
-        'STOCK_V4_OPERATING_ALLOW_LIQUIDITY_DISTRIBUTION_DAY="${OPERATING_DAY_ALLOW}"',
-        '"--ssl-mode=DISABLED"',
-      ])
-      && includesAll(files.stockV4ReplaySymbolMaturityRunner, [
-        "STOCK_V4_OPERATING_ALLOW_MATURITY_PROMOTION",
-        "operating maturity promotion requires exact STOCK_SERVICE schema",
-        '"--ssl-mode=DISABLED"',
-      ])
-      && includesAll(files.stockV4OperatingUnderwriterLifecycleRunner, [
-        "STOCK_V4_OPERATING_ALLOW_UNDERWRITER_LIFECYCLE",
-        "exact STOCK_SERVICE and STOCK_BATCH_METADATA schemas",
-        "require_quiescent_regular_clock",
-        "require_global_quiescence",
-        "require_contract_boundary",
-        "ISSUE_UNDERWRITER",
-        "LIQUIDITY_PROVIDER",
-        "STOCK_V4_OPERATING_ALLOW_LP_FUNDING",
-        "checkpoint LP funding deposited",
-        "/liquidity-mandates/${SYMBOL}/cash-adjustments",
-        "ADMIN_DEPOSIT",
-        '"--ssl-mode=DISABLED"',
-        "check-only finished without mutation",
-      ])
-      && includesAll(files.stockV4ShareRebaseGateRunner, [
-        "STOCK_V4_OPERATING_ALLOW_SHARE_REBASE_GATE",
-        "operating share-rebase gate requires exact STOCK_SERVICE and STOCK_BATCH_METADATA schemas",
-        'STOCK_V4_OPERATING_ALLOW_BATCH="${OPERATING_BATCH_ALLOW}"',
-      ])
-      && includesAll(files.stockV4ContractActivationGateRunner, [
-        "STOCK_V4_OPERATING_ALLOW_CONTRACT_ACTIVATION_GATE",
-        "operating contract-activation gate requires exact STOCK_SERVICE and STOCK_BATCH_METADATA schemas",
-        'STOCK_V4_OPERATING_ALLOW_BATCH="${OPERATING_BATCH_ALLOW}"',
-      ])
-      && includesAll(files.stockV4RoleRedistributionCompletionRunner, [
-        "STOCK_V4_OPERATING_ALLOW_ROLE_REDISTRIBUTION_COMPLETION",
-        "operating role-redistribution completion requires exact STOCK_SERVICE and STOCK_BATCH_METADATA schemas",
-        "operating role redistribution forbids bulk completion",
-        'STOCK_V4_OPERATING_ALLOW_BATCH="${OPERATING_BATCH_ALLOW}"',
-        'STOCK_V4_OPERATING_ALLOW_ROLE_REDISTRIBUTION_DAY="${OPERATING_DAY_ALLOW}"',
-      ])
-      && includesAll(files.stockV4RoleRedistributionDayRunner, [
-        "STOCK_V4_OPERATING_ALLOW_ROLE_REDISTRIBUTION_DAY",
-        "operating role-redistribution day requires exact STOCK_SERVICE schema",
-        "operating role redistribution forbids bulk completion",
-      ])
-      && !files.stockV4OperatingUnderwriterLifecycleRunner.includes(
-        "DROP DATABASE",
-      )
-      && !files.stockV4OperatingUnderwriterLifecycleRunner.includes(
-        "UPDATE stock_holding",
-      )
-      && !files.stockV4OperatingUnderwriterLifecycleRunner.includes(
-        "UPDATE stock_account",
-      ),
-  ],
-  [
-    "V4 materialized replay migration is idempotent and pins every shortage target",
-    includesAll(files.stockV4ReplayMigrationVerifier, [
-      "^STOCK_V4_REPLAY_[A-Za-z0-9_]+$",
-      "materialized baseline marker",
-      "6|259|2027-02-09|7370",
-      "baseline business data unchanged after migration",
-      "stock_order/stock_execution index fingerprint unchanged",
-      "for attempt in 1 2",
-      "8|577289815|402369898|44594000000000.00|3699844",
-      "256330000000.00|383210000000.00",
-      "all existing and new symbol targets",
-      "existing seven-symbol intermediate target",
-      "7|505128588|366289285|39023153275600.00|3237364",
-      "symbol share and market-capitalization arithmetic",
-      "0|0|44594000000000.00",
-      "derived target reference turnover is inside the contract band",
-      "285802591950.00|1",
-      "150|15000|100.0000|16006366331295.49|0.35893542",
-      "non-runnable historical V3 policy",
-      "neutral V4 draft policy",
-      "stock_v4_replay_migration_audit",
-    ])
-      && !files.stockV4ReplayMigrationVerifier.includes("DROP DATABASE")
-      && !files.stockV4ReplayMigrationVerifier.includes("USE STOCK_SERVICE"),
-  ],
-  [
-    "V4 structural rebase gates pin all numeric shortages and stop between atomic stages",
-    includesAll(files.stockV4ShareRebaseGateRunner, [
-      "STOCK_V4_REPLAY_ALLOW_SHARE_REBASE_GATE",
-      "^STOCK_V4_REPLAY_[A-Za-z0-9_]+$",
-      "^STOCK_V4_REPLAY_BATCH_[A-Za-z0-9_]+$",
-      "SHARE_STRUCTURE",
-      "REPORTS_AGGREGATED",
-      "DEFERRED",
-      "STOCK_BATCH_POST_CLOSE_RETRY_BASE_SECONDS",
-      "share-rebase target issued shares",
-      "share-rebase target tradable shares",
-      "share-rebase target market capitalization",
-      "share-rebase per-symbol contract target mismatches",
-      "share-rebase mature symbol targets",
-      "applied per-symbol instrument share mismatches",
-      "applied holding-plan mismatches",
-      "applied per-symbol holding reconciliation failures",
-      "share-rebase gate complete",
-    ])
-      && includesAll(files.stockV4ContractActivationGateRunner, [
-        "STOCK_V4_REPLAY_ALLOW_CONTRACT_ACTIVATION_GATE",
-        "PRICE_CAPITAL",
-        "MARKET_ROLE_CAPACITY",
-        "scheduled scaled-market contract",
-        "population contract",
-        "role-capacity automatic-market plan count",
-        "role-capacity automatic-market target maximum total",
-        "role-capacity automatic-market ratio or symbol mismatches",
-        "role-capacity LP plan count",
-        "role-capacity institution mandate count",
-        "STOCK_V4_REPLAY_EXPECTED_DAILY_TURNOVER_LOWER",
-        "STOCK_V4_REPLAY_EXPECTED_DAILY_TURNOVER_UPPER",
-        "price-capital per-symbol contract target mismatches",
-        "role-capacity LP per-symbol target mismatches",
-        "applied per-symbol economic target mismatches",
-        "applied market capitalization",
-        "price-capital account cash mismatch count",
-        "price-capital account holding-value mismatch count",
-        "price-capital cohort AUM mismatch count",
-        "price-capital cash-flow audit row count",
-        "price-capital cash-flow audit mismatches",
-        "price-capital planned cash-flow account mismatches",
-        "automatic-market role-capacity mismatch count",
-        "LP role-capacity mismatch count",
-        "institution role-capacity mismatch count",
-        "live V3 policy count",
-        "active V4 policy count",
-        "scaled-market contract activation complete",
-      ])
-      && !files.stockV4ShareRebaseGateRunner.includes(
-        "--database=STOCK_SERVICE",
-      )
-      && !files.stockV4ContractActivationGateRunner.includes(
-        "--database=STOCK_SERVICE",
-      ),
+    "previous-generation operational assets are absent from live source and scripts",
+    listFiles(join(root, "scripts")).every((path) => !/v4/i.test(path))
+      && listFiles(join(root, "stock-batch-service/src/main/java"))
+        .every((path) => !/(^|\/)v4(\/|$)|V4/.test(path))
+      && listFiles(join(root, "stock-back-service/src/main/java"))
+        .every((path) => !/(^|\/)v4(\/|$)|V4/.test(path)),
   ],
   [
     "stock API surface stays within initial endpoints",
