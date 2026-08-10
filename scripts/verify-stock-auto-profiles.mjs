@@ -16,6 +16,15 @@ const paths = {
   cancellationPlanner: "stock-batch-service/src/main/java/stock/batch/service/automarket/v5/cancellation/V5CancellationPlanner.java",
   contractTest: "stock-batch-service/src/test/java/stock/batch/service/automarket/v5/profile/V5ProfileRegistryContractTest.java",
   cancellationTest: "stock-batch-service/src/test/java/stock/batch/service/automarket/v5/cancellation/V5CancellationPlannerTest.java",
+  codeParameters: "stock-batch-service/src/main/java/stock/batch/service/automarket/v5/AutoParticipantV5ModelParameters.java",
+  orderSchedule: "stock-batch-service/src/main/java/stock/batch/service/automarket/biz/AutoParticipantOrderScheduleService.java",
+  profileQueue: "stock-batch-service/src/main/java/stock/batch/service/automarket/biz/AutoMarketProfileQueueReconcileService.java",
+  operationsController: "stock-back-service/src/main/java/stock/back/service/market/act/AutoMarketAdminController.java",
+  operationsService: "stock-back-service/src/main/java/stock/back/service/market/biz/AutoParticipantV5OperationsService.java",
+  profileRequest: "stock-back-service/src/main/java/stock/back/service/market/vo/AutoParticipantProfileConfigRequest.java",
+  profileEntity: "stock-back-service/src/main/java/stock/back/service/database/entity/StockAutoParticipantProfileConfig.java",
+  frontApi: "stock-front-service/app/lib/stock-api/admin.ts",
+  frontProfileDraft: "stock-front-service/app/supply-demand/admin/AdminProfileConfigTypes.ts",
   migration: "stock-back-service/src/main/resources/db/ddl/stock_auto_participant_v5_fresh_start_alter.sql",
   frontTypes: "stock-front-service/app/types/stockAutomation.ts",
   frontPanel: "stock-front-service/app/supply-demand/admin/AdminAutoParticipantV5OperationsPanel.tsx",
@@ -42,6 +51,10 @@ const liveRoots = [
 ];
 const liveFiles = liveRoots.flatMap(listFiles);
 const liveText = liveFiles.map(read).join("\n");
+const liveExecutionText = liveFiles
+  .filter((path) => !path.endsWith("/StockSchemaReadinessValidator.java"))
+  .map(read)
+  .join("\n");
 
 const checks = [
   ["exactly 27 automatic-participant profile types exist", profileTypes.length === 27],
@@ -86,11 +99,55 @@ const checks = [
     "decide_everyProfileCanCancelFromItsOwnDynamicReview",
   ])],
   ["the live Java model version is V5-only", /enum\s+AutoParticipantBehaviorModelVersion\s*\{\s*V5\s*;/.test(files.modelVersion)],
+  ["live V5 runtime has no database-policy revision vocabulary",
+    !/AutoParticipantV5Policy|AutoParticipantBehaviorPolicy/.test(liveText)
+    && !/stock_auto_participant_policy_revision/.test(liveExecutionText)],
+  ["V5 execution values are immutable code-defined model values", includesAll(files.codeParameters, [
+    "MODEL_VERSION_NUMBER = 5L",
+    "CODE_DEFINED",
+    "codeDefined()",
+    "32",
+    "0.0500",
+  ]) && !includesAny(files.codeParameters, [
+    "fromJson(",
+    "ObjectMapper",
+    "baseline(",
+  ])],
+  ["PRE_OPEN prepares schedules without policy creation or activation", !existsSync(join(root,
+    "stock-batch-service/src/main/java/stock/batch/service/automarket/biz/AutoParticipantPolicyActivationService.java",
+  )) && includesAll(files.orderSchedule, [
+    "AutoParticipantV5ModelParameters.codeDefined()",
+    "requireCodeModelVersion",
+  ]) && !includesAny(files.orderSchedule + files.profileQueue, [
+    "stock_auto_participant_policy_revision",
+    "activateDuePolicies",
+    "requireExactlyOneActivePolicy",
+  ])],
+  ["admin exposes V5 as read-only code model status", includesAll(files.operationsService + files.frontPanel, [
+    "single code-defined V5 behavior model",
+    "configurationSource",
+    "배포 코드",
+    "장 시작 시 생성·예약·활성화하지 않으며",
+  ]) && !includesAny(files.operationsController + files.operationsService + files.frontApi + files.frontPanel, [
+    "/auto-market/v5/runtime",
+    "/auto-market/v5/policies/scheduled",
+    "updateAutoParticipantV5Runtime",
+    "scheduleAutoParticipantV5Policy",
+    "scheduleAutoParticipantV5ModelParameters",
+    "V5 정책 개정",
+  ])],
+  ["admin profile writes cannot select the behavior-model version", includesAll(files.profileEntity, [
+    "config.behaviorModelVersion = AutoParticipantBehaviorModelVersion.V5",
+  ]) && !includesAny(files.profileRequest + files.frontApi + files.frontProfileDraft, [
+    "behaviorModelVersion",
+    "setBehaviorModelVersion",
+  ])],
   ["fresh migration removes population amplification and permits only V5 live configuration", includesAll(files.migration, [
     "V5 is a destructive, independent start",
     "DROP COLUMN represented_participant_count",
     "DROP COLUMN population_weight",
     "behavior_model_version = 'V5'",
+    "DROP TABLE IF EXISTS stock_auto_participant_policy_revision",
     "CREATE TABLE stock_auto_participant_v5_daily_state",
     "CREATE TABLE stock_auto_participant_v5_order_schedule",
   ])],
@@ -162,4 +219,8 @@ function sameSet(left, right) {
 
 function includesAll(text, values) {
   return values.every((value) => text.includes(value));
+}
+
+function includesAny(text, values) {
+  return values.some((value) => text.includes(value));
 }

@@ -520,7 +520,7 @@ const checks = [
       "volumeAttainmentRate",
       "activeParticipantCount",
       "participantIdentityMismatchCount",
-      "nextRevisionAllowed",
+      "calibrationPassed",
       "referenceCapacityMatched",
       "shareStructureMatched",
       "autoSubmittedQuantity",
@@ -534,12 +534,15 @@ const checks = [
       "실제 계좌의 주문과 수량을 1:1로 기록",
       "대표인구 가중치나 코호트 증폭을 사용하지 않습니다.",
       "제출 수량·총 체결 참여량·제출 주문 수가 각각 목표의 50%~200% 범위인지 함께 검증합니다.",
-      "다음 정책 묶음 변경 가능",
+      "완료장 검증 통과",
       "목표 거래대금 범위",
     ],
-  ) && !includesAny(files.types + files.supplyDemandAdmin, [
+  ) && !includesAny(files.types + files.stockApi + files.supplyDemandAdmin, [
     "representedParticipantCount",
     "populationWeight",
+    "/auto-market/v5/runtime",
+    "/auto-market/v5/policies/scheduled",
+    "nextRevisionAllowed",
   ])],
   ["legacy listing auto runtime and admin files are removed", removedListingAutoFiles.every((path) => !existsSync(join(root, path)))],
   ["automation profile tab renders profile config panel", includesAll(files.supplyDemandAdmin + files.supplyDemandAdminAutomationSection, [
@@ -551,7 +554,7 @@ const checks = [
     "onSubmit={onSubmitProfileConfig}",
   ]) && includesAll(files.adminNavigation, [
     'href: "/admin/participants/profiles"',
-    'label: "프로필 정책"',
+    'label: "프로필 운영값"',
   ]) && !files.supplyDemandAdminAccountsSection.includes("<AdminProfilesSection")],
   ["admin auto market symbol defaults explain operational fields", includesAll(files.supplyDemandAdmin, [
     "종목별 자동장",
