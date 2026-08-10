@@ -153,7 +153,7 @@ const checks = [
   ])],
   ["frontend exposes only the V5 model and the 1:1 operating contract", includesAll(files.frontTypes + files.frontPanel, [
     'AutoParticipantBehaviorModelVersion = "V5"',
-    "실제 계좌의 주문과 수량을 1:1로 기록",
+    "각 계좌의 자산·행동·주문·수량은 해당 참여자 본인의 값이며",
     "대표인구 가중치나 코호트 증폭을 사용하지 않습니다.",
     "autoSubmittedQuantity",
     "autoExecutedGrossQuantity",
