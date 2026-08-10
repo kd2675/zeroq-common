@@ -116,6 +116,8 @@ const supplyDemandBatchJobNames = [
   "institution-market",
   "issue-underwriter-market",
   "liquidity-provider-market",
+  "market-news-due-publication",
+  "market-news-storyline-generation",
   "order-book-execution",
   "portfolio-settlement",
 ];
@@ -844,7 +846,7 @@ const checks = [
   ["admin recurring cash settings allow day or longer intervals only",
     sameSet(recurringCashIntervalOptions, ["DAY", "MONTH", "YEAR"])
       && files.autoParticipantMutationPayload.includes('z.enum(["DAY", "MONTH", "YEAR"])')],
-  ["batch runtime labels cover supply-demand batch jobs only", sameSet(supplyDemandBatchJobNames, frontBatchRuntimeLabels)
+  ["batch runtime labels cover market operation batch jobs only", sameSet(supplyDemandBatchJobNames, frontBatchRuntimeLabels)
     && files.supplyDemandAdmin.includes("SUPPLY_DEMAND_BATCH_JOB_NAMES")
     && !files.supplyDemandAdmin.includes('"virtual-price-execution":')
     && !files.supplyDemandAdmin.includes('"market-data-refresh":')
