@@ -11,6 +11,7 @@ const files = {
   stockApi: readStockApiSourceText(),
   authApi: read("app/lib/auth.ts"),
   rootLayout: read("app/layout.tsx"),
+  globalsCss: read("app/globals.css"),
   simulationTimeBadge: read("app/components/SimulationTimeBadge.tsx"),
   simulationTime: read("app/lib/simulationTime.ts"),
   home: read("app/page.tsx"),
@@ -23,6 +24,7 @@ const files = {
   reports: readSourceText("app/reports"),
   supplyDemand: readSourceText("app/supply-demand"),
   supplyDemandChart: read("app/supply-demand/MarketChartPanel.tsx"),
+  supplyDemandStackedBook: read("app/supply-demand/OrderBookStackedRows.tsx"),
   supplyDemandOrders: readSourceText("app/supply-demand/orders"),
   supplyDemandAdmin: supplyDemandAdminSourceText,
   corporateActionDraftState: read("app/supply-demand/admin/useAdminStockEventDraftState.ts"),
@@ -304,12 +306,17 @@ const checks = [
     "value={selectedSymbol}",
     "orderBookQueryOptions(selectedSymbol",
   ]) && !files.supplyDemand.includes("?? instruments[0]")],
-  ["order book trading screen keeps depth above chart", includesAll(files.supplyDemand + files.supplyDemandChart, [
+  ["order book trading screen prioritizes depth on mobile and aligns the desktop core", includesAll(files.supplyDemand + files.supplyDemandChart + files.globalsCss, [
     "<OrderBookDepthPanel",
     "<MarketChartPanel",
     "ORDER BOOK DEPTH",
     "PRICE / VOLUME",
-  ]) && appearsBefore(files.supplyDemand, "<OrderBookDepthPanel", "<MarketChartPanel")],
+    ".stock-trade-core",
+    '"orderbook"',
+    '"ticket"',
+    '"chart"',
+    'grid-template-areas: "chart orderbook ticket"',
+  ])],
   ["order book chart supports expandable interactive candlesticks", includesAll(files.supplyDemand + files.supplyDemandChart, [
     "lightweight-charts",
     "createChart",
@@ -323,17 +330,17 @@ const checks = [
     "mouseWheel: true",
     "pinch: true",
   ])],
-  ["stacked order book uses centered price ladder", includesAll(files.supplyDemand, [
+  ["stacked order book uses centered price ladder", includesAll(files.supplyDemandStackedBook, [
     "StackedOrderBookRow",
+    "CurrentPriceRow",
     "매도 잔량",
     "매수 잔량",
-    "중앙 현재가",
-    "매도 위 / 매수 아래",
-    "sortAskLevels",
-    "sortBidLevels",
-    "stackedAsks: [...fixedAsks].reverse()",
-    "stackedBids: fixedBids",
-  ])],
+    "가격 / 등락률",
+    "visibleAsks.map",
+    "visibleBids.map",
+  ])
+    && appearsBefore(files.supplyDemandStackedBook, "visibleAsks.map", "<CurrentPriceRow")
+    && appearsBefore(files.supplyDemandStackedBook, "<CurrentPriceRow", "visibleBids.map")],
   ["order book admin selects newly created instrument for follow-up actions", includesAll(files.supplyDemandAdmin + files.queryLayer, [
     "createInstrumentSchema",
     "setActionSymbol(instrument.symbol)",
