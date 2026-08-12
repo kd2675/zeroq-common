@@ -250,6 +250,6 @@ npm run build
 - Workspace guide: `AGENTS.md`
 - Command reference: `HELP.md`
 - Documentation index: `AGENTS_DOCUMENTATION_INDEX.md`
-- Semo more feature checklist: `semo-front-service/AGENTS_SEMO_MORE_FEATURE_CHECKLIST.md`
+- Semo More feature guide: `semo-front-service/SEMO_MORE_FEATURE_GUIDE.md`
 - Muse operational note: `muse-back-service/AGENTS_MUSE_CONTEST_UNIFIED.md`
 - ZeroQ seat sensor hardware note: `zeroq-back-sensor/AGENTS_ZEROQ_SEAT_SENSOR_HARDWARE.md`

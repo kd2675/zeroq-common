@@ -1,4 +1,4 @@
-<!-- Updated: 2026-07-27 -->
+<!-- Updated: 2026-08-12 -->
 
 # zeroq-common Agent Guide
 
@@ -133,7 +133,7 @@
 - 구현이 아직 얕은 프로젝트는 그 상태를 그대로 적고 과장하지 않습니다.
 - `semo` 문서는 mock 라우트와 실제 API 라우트를 구분해서 쓰지 말고, 현재 실제 동선 기준으로 설명합니다.
 - `semo` 기능 문서는 “기능 카탈로그 -> 활성화 -> 기능 전용 API/화면” 순서로 설명하는 편이 맞습니다.
-- `semo`의 신규 `/more` 기능 추가나 대규모 재구성은 `semo-front-service/AGENTS_SEMO_MORE_FEATURE_CHECKLIST.md`를 기준으로 진행합니다.
+- `semo`의 신규 기능 추가나 대규모 재구성은 `semo-front-service/SEMO_MORE_FEATURE_GUIDE.md`를 단일 기준으로 진행합니다.
 
 ## Testing Rules
 

@@ -47,7 +47,7 @@
 | `muse-back-service/` | `README.md`, `HELP.md`, `AGENTS.md`, `AGENTS_MUSE_CONTEST_UNIFIED.md` |
 | `muse-front-service/` | `README.md`, `AGENTS.md` |
 | `semo-back-service/` | `README.md`, `HELP.md`, `AGENTS.md` |
-| `semo-front-service/` | `README.md`, `AGENTS.md`, `AGENTS_SEMO_MORE_FEATURE_CHECKLIST.md`, `AGENTS_SEMO_PRODUCT_DIRECTION.md`, `modal-analysis.md` |
+| `semo-front-service/` | `README.md`, `AGENTS.md`, `SEMO_MORE_FEATURE_GUIDE.md` |
 | `sbng-front-service/` | `README.md`, `AGENTS.md` |
 
 ## Recommended Reading Order
@@ -68,8 +68,7 @@
 14. Stock 장마감·정산·야간 후처리 또는 주문·체결 부하 보호 작업이면 `stock-batch-service/docs/stock-eod-refactoring-plan-2026-07-15.md`
 15. Stock KOSPI 1/100 시장·V5 신규 시작이면 `stock-back-service/docs/market-simulation/21-kospi-one-hundredth-v5-fresh-start.md`
 16. Muse 작업이면 `muse-back-service/AGENTS_MUSE_CONTEST_UNIFIED.md`
-17. Semo 기능 추가/재구성이면 `semo-front-service/AGENTS_SEMO_MORE_FEATURE_CHECKLIST.md`
-18. Semo 제품 방향 판단이면 `semo-front-service/AGENTS_SEMO_PRODUCT_DIRECTION.md`
+17. Semo 기능 판단·추가·재구성·UIUX 검증이면 `semo-front-service/SEMO_MORE_FEATURE_GUIDE.md`
 
 ## Maintenance Rules
 
