@@ -28,6 +28,9 @@ const paths = {
   migration: "stock-back-service/src/main/resources/db/ddl/stock_auto_participant_v5_fresh_start_alter.sql",
   frontTypes: "stock-front-service/app/types/stockAutomation.ts",
   frontPanel: "stock-front-service/app/supply-demand/admin/AdminAutoParticipantV5OperationsPanel.tsx",
+  frontCohortPanel: "stock-front-service/app/supply-demand/admin/AdminAutoProfileCohortPanel.tsx",
+  orderService: "stock-batch-service/src/main/java/stock/batch/service/automarket/biz/AutoParticipantOrderService.java",
+  orderExecutor: "stock-batch-service/src/main/java/stock/batch/service/automarket/biz/AutoMarketOrderExecutor.java",
 };
 
 const files = Object.fromEntries(
@@ -42,7 +45,9 @@ const algorithmCases = matches(files.algorithmCatalog, /case\s+([A-Z_]+)\s*->/g)
   .map((match) => match[1])
   .filter((value) => profileTypes.includes(value));
 const cancellationCatalogCases = matches(files.cancellationCatalog, /case\s+([A-Z_]+)\s*->/g).map((match) => match[1]);
-const cancellationPlannerCases = matches(files.cancellationPlanner, /case\s+([A-Z_]+)\s*->/g).map((match) => match[1]);
+const cancellationPlannerCases = matches(files.cancellationPlanner, /case\s+([A-Z_]+)\s*->/g)
+  .map((match) => match[1])
+  .filter((value) => profileTypes.includes(value));
 
 const liveRoots = [
   "stock-batch-service/src/main/java",
@@ -106,8 +111,9 @@ const checks = [
     "MODEL_VERSION_NUMBER = 5L",
     "CODE_DEFINED",
     "codeDefined()",
-    "32",
-    "0.0500",
+    "maxOrdersPerExecutionAccountPerDay",
+    "2_000",
+    "0.0100",
   ]) && !includesAny(files.codeParameters, [
     "fromJson(",
     "ObjectMapper",
@@ -151,17 +157,28 @@ const checks = [
     "CREATE TABLE stock_auto_participant_v5_daily_state",
     "CREATE TABLE stock_auto_participant_v5_order_schedule",
   ])],
-  ["frontend exposes only the V5 model and the 1:1 operating contract", includesAll(files.frontTypes + files.frontPanel, [
+  ["frontend exposes V5 plus the profile-cohort execution contract", includesAll(
+    files.frontTypes + files.frontPanel + files.frontCohortPanel,
+    [
     'AutoParticipantBehaviorModelVersion = "V5"',
-    "각 계좌의 자산·행동·주문·수량은 해당 참여자 본인의 값이며",
-    "대표인구 가중치나 코호트 증폭을 사용하지 않습니다.",
+    "15만 대표 인구 · 실행 샤드 계약",
+    "representedPopulationCount",
+    "executionAccountCount",
+    "대표 인구는 행동 빈도에만 반영하며 주문수량에는 곱하지 않습니다.",
     "autoSubmittedQuantity",
     "autoExecutedGrossQuantity",
     "targetAutoSubmittedOrderCount",
   ])],
   ["no executable previous-model source directory remains", !existsSync(join(root, "stock-batch-service/src/main/java/stock/batch/service/automarket/v4"))
     && liveFiles.every((path) => !/(^|\/)v4(\/|$)|V4/.test(relative(root, path)))],
-  ["live source contains no represented-population or population-weight field", !/representedParticipant|represented_participant|populationWeight|population_weight/.test(liveText)],
+  ["represented population changes attention only and never order quantity", includesAll(files.orderService, [
+    "personalLiquidPortfolioAsset",
+    "attentionScale",
+  ]) && !/representedParticipant|represented_participant|populationWeight|population_weight/.test(liveExecutionText)
+    && !/(quantity|requestedQuantity|safeMaximum)\s*[*\/]\s*(attentionScale|representedPopulationCount)/.test(liveExecutionText)],
+  ["automatic-participant orders are not admitted against scaled volume targets",
+    !files.orderExecutor.includes("flowPacingService.admitOrders")
+    && !files.orderExecutor.includes("ScaledMarketFlowPacingService flowPacingService")],
 ];
 
 let failed = 0;
