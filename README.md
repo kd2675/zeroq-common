@@ -106,7 +106,7 @@
 - `zeroq-back-service`: `20180`
 - `zeroq-back-sensor`: `20181`
 - `zeroq-sensor-gateway`: `20191`
-- `muse-back-service`: `20280` (`local/dev`), `10280` (`prod`), `30280` (`test`)
+- `muse-back-service`: `20281` (`local`, `MUSE_SERVER_PORT`로 변경 가능), `20280` (`dev`), `10280` (`prod`), `30280` (`test`)
 - `semo-back-service`: `20280` (`local/dev`), `10280` (`prod`), `30280` (`test`)
 - `stock-back-service`: `20480` (`local/dev`), `10480` (`prod`), `30480` (`test`)
 - `stock-batch-service`: `20481` (`local/local-direct/dev`), `30481` (`test`), `10481` (`prod`)
