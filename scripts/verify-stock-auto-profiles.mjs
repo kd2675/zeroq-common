@@ -31,6 +31,7 @@ const paths = {
   frontCohortPanel: "stock-front-service/app/supply-demand/admin/AdminAutoProfileCohortPanel.tsx",
   orderService: "stock-batch-service/src/main/java/stock/batch/service/automarket/biz/AutoParticipantOrderService.java",
   orderExecutor: "stock-batch-service/src/main/java/stock/batch/service/automarket/biz/AutoMarketOrderExecutor.java",
+  populationExpansion: "stock-batch-service/src/main/java/stock/batch/service/automarket/biz/AutoParticipantPopulationExpansionService.java",
 };
 
 const files = Object.fromEntries(
@@ -157,23 +158,24 @@ const checks = [
     "CREATE TABLE stock_auto_participant_v5_daily_state",
     "CREATE TABLE stock_auto_participant_v5_order_schedule",
   ])],
-  ["frontend exposes V5 plus the profile-cohort execution contract", includesAll(
+  ["frontend exposes V5 plus the actual-account profile-partition contract", includesAll(
     files.frontTypes + files.frontPanel + files.frontCohortPanel,
     [
     'AutoParticipantBehaviorModelVersion = "V5"',
-    "15만 대표 인구 · 실행 샤드 계약",
+    "15만 실제 계좌 · 프로필 파티션 계약",
     "representedPopulationCount",
     "executionAccountCount",
-    "대표 인구는 행동 빈도에만 반영하며 주문수량에는 곱하지 않습니다.",
+    "한 계좌는 한 사람이고 인구 배율은 사용하지 않습니다.",
     "autoSubmittedQuantity",
     "autoExecutedGrossQuantity",
     "targetAutoSubmittedOrderCount",
   ])],
   ["no executable previous-model source directory remains", !existsSync(join(root, "stock-batch-service/src/main/java/stock/batch/service/automarket/v4"))
     && liveFiles.every((path) => !/(^|\/)v4(\/|$)|V4/.test(relative(root, path)))],
-  ["represented population changes attention only and never order quantity", includesAll(files.orderService, [
-    "personalLiquidPortfolioAsset",
-    "attentionScale",
+  ["actual-account expansion fixes population attention at one and never scales order quantity", includesAll(files.populationExpansion, [
+    'MODEL_CONTRACT = "ACTUAL_ACCOUNT_PROFILE_PARTITIONS"',
+    "attention_scale = 1.000000",
+    "execution_account_count = values(execution_account_count)",
   ]) && !/representedParticipant|represented_participant|populationWeight|population_weight/.test(liveExecutionText)
     && !/(quantity|requestedQuantity|safeMaximum)\s*[*\/]\s*(attentionScale|representedPopulationCount)/.test(liveExecutionText)],
   ["automatic-participant orders are not admitted against scaled volume targets",
