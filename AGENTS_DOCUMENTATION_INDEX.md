@@ -10,6 +10,8 @@
 | `HELP.md` | 루트에서 자주 쓰는 명령 모음 |
 | `AGENTS.md` | 작업 규칙과 문서 유지 기준 |
 | `COMMIT_MESSAGE_CONVENTION.md` | 한국어 커밋 메시지 작성 규칙 |
+| `docs/ubuntu-data-nvme-migration-runbook.md` | Ubuntu `/data` HDD를 NVMe SSD로 이전하는 실행 절차 |
+| `docs/ubuntu-data-nvme-migration-troubleshooting.md` | `/data` 마이그레이션 중 예외 상황 점검과 복구 부록 |
 
 ## Common / Infrastructure
 
