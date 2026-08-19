@@ -19,7 +19,6 @@ const files = {
   adminNavigation: read("app/navigation/adminNavigation.ts"),
   nextConfig: read("next.config.ts"),
   canonicalAdminPage: read("app/admin/[[...slug]]/page.tsx"),
-  virtualPrice: readSourceText("app/virtual-price"),
   portfolio: readSourceText("app/portfolio"),
   reports: readSourceText("app/reports"),
   supplyDemand: readSourceText("app/supply-demand"),
@@ -141,7 +140,7 @@ const checks = [
   ["unused TypeScript locals and parameters fail the build", files.tsconfig.compilerOptions?.noUnusedLocals === true && files.tsconfig.compilerOptions?.noUnusedParameters === true],
   ["JavaScript source is disabled", files.tsconfig.compilerOptions?.allowJs === false],
   ["fetch is used through the shared API client", !hasDependency("axios") && includesAll(files.apiLayer, ["fetch(", "requestJson", "DEFAULT_REQUEST_TIMEOUT_MS"])],
-  ["React Query is wired", hasDependency("@tanstack/react-query") && includesAll(files.virtualPrice + files.supplyDemand + files.queryLayer, ["useQuery", "queryOptions", "invalidateQueries"])],
+  ["React Query is wired", hasDependency("@tanstack/react-query") && includesAll(files.home + files.supplyDemand + files.queryLayer, ["useQuery", "queryOptions", "invalidateQueries"])],
   ["React Query cache writes stay inside centralized cache update module", includesAll(files.queryLayer, [
     "setBatchRuntimeControlQueryData",
     "applyPriceStreamEventQueryData",

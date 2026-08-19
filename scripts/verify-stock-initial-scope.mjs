@@ -26,7 +26,7 @@ const deferredCorporateActionTypes = [
 
 const allowedOrderTypes = ["LIMIT", "MARKET"];
 const deferredOrderFeatures = ['"STOP_LIMIT"', '"IOC"', '"FOK"', '"GTC"', '"GTD"', '"CALL_AUCTION"', '"PRE_OPEN"', '"AFTER_HOURS"'];
-const allowedMarketTypes = ["VIRTUAL_PRICE", "ORDER_BOOK"];
+const allowedMarketTypes = ["ORDER_BOOK"];
 const allowedMarketSessionStatuses = ["OPEN", "CLOSED", "HALTED", "CIRCUIT_BREAKER"];
 
 const files = {
@@ -100,11 +100,8 @@ const files = {
 };
 
 const defaultSeedMarkers = [
-  "INSERT INTO stock_instrument",
   "INSERT INTO stock_price",
-  "INSERT INTO stock_virtual_market_config",
   "INSERT INTO stock_auto_participant(",
-  "MERGE INTO stock_virtual_market_config",
   "MERGE INTO stock_order_book_instrument",
   "MERGE INTO stock_auto_participant",
   "삼성전자",
@@ -155,7 +152,6 @@ const schedulerDisableMarkers = [
   "schedulers-enabled: false",
   "simulation-clock:\n    scheduler-enabled: false",
   "signal:\n      enabled: false",
-  "market-data:\n      enabled: false",
   "order-book-execution:\n      enabled: false",
   "corporate-actions:\n      enabled: false",
   "auto-market:\n      enabled: false",
@@ -205,7 +201,6 @@ const stockBackApiSurface = [
   '@GetMapping("/prices/{symbol}/ticks")',
   '@GetMapping("/order-books/{symbol}")',
   '@GetMapping("/rankings")',
-  '@GetMapping("/virtual-market")',
   '@GetMapping("/order-book-market")',
   '@GetMapping("/auto-market")',
   '@GetMapping("/auto-market/v5/operations")',
@@ -227,7 +222,6 @@ const stockBatchApiSurface = [
   '@RequestMapping("/internal/stock-batch/v1/system")',
   '@GetMapping("/status")',
   '@RequestMapping("/internal/stock-batch/v1/jobs")',
-  '@PostMapping("/market-data/refresh")',
   '@PostMapping("/order-book-execution/run")',
   '@PostMapping("/auto-participant-cash-flow/run")',
   '@GetMapping("/auto-participant-cash-flow/status")',
@@ -277,7 +271,6 @@ const stockBackApiSurfaceRoutes = [
   "GET /api/stock/v1/markets/prices/{symbol}/ticks",
   "GET /api/stock/v1/markets/order-books/{symbol}",
   "GET /api/stock/v1/markets/rankings",
-  "GET /api/stock/v1/markets/virtual-market",
   "GET /api/stock/v1/markets/order-book-market",
   "GET /api/stock/v1/markets/auto-market",
   "GET /api/stock/v1/markets/auto-market/participants/overviews",
@@ -297,7 +290,6 @@ const stockBackApiSurfaceRoutes = [
 
 const stockBatchApiSurfaceRoutes = [
   "GET /internal/stock-batch/v1/system/status",
-  "POST /internal/stock-batch/v1/jobs/market-data/refresh",
   "POST /internal/stock-batch/v1/jobs/order-book-execution/run",
   "POST /internal/stock-batch/v1/jobs/auto-participant-cash-flow/run",
   "GET /internal/stock-batch/v1/jobs/auto-participant-cash-flow/status",
@@ -328,7 +320,7 @@ const checks = [
     arraysEqual(parseJavaEnum(files.orderTypeEnum, "OrderType"), allowedOrderTypes),
   ],
   [
-    "back market type enum keeps two market families only",
+    "back market type enum keeps the order-book market only",
     arraysEqual(parseJavaEnum(files.marketTypeEnum, "MarketType"), allowedMarketTypes),
   ],
   [
@@ -344,7 +336,7 @@ const checks = [
     arraysEqual(parseTsUnion(files.frontTradingTypes, "OrderType"), allowedOrderTypes),
   ],
   [
-    "front market type keeps two market families only",
+    "front market type keeps the order-book market only",
     arraysEqual(parseTsUnion(files.frontMarketTypes, "MarketType"), allowedMarketTypes),
   ],
   [
@@ -410,9 +402,8 @@ const checks = [
     "canonical MySQL and batch H2 keep shared order and execution scopes",
     ddlPaths.every((path) => includesAll(read(path), [
       "chk_stock_order_type_valid CHECK (CASE `order_type` WHEN 'LIMIT' THEN 1 WHEN 'MARKET' THEN 1 ELSE 0 END = 1)",
-      "chk_stock_order_market_type_valid CHECK (CASE `market_type` WHEN 'VIRTUAL_PRICE' THEN 1 WHEN 'ORDER_BOOK' THEN 1 ELSE 0 END = 1)",
-      "chk_stock_execution_source_valid CHECK (CASE `source` WHEN 'VIRTUAL_MARKET_PRICE' THEN 1 WHEN 'INTERNAL_ORDER_BOOK' THEN 1 ELSE 0 END = 1)",
-      "chk_stock_virtual_market_status CHECK (CASE `market_status` WHEN 'OPEN' THEN 1 WHEN 'CLOSED' THEN 1 WHEN 'HALTED' THEN 1 WHEN 'CIRCUIT_BREAKER' THEN 1 ELSE 0 END = 1)",
+      "chk_stock_order_market_type_valid CHECK (`market_type` = 'ORDER_BOOK')",
+      "chk_stock_execution_source_valid CHECK (`source` = 'INTERNAL_ORDER_BOOK')",
       "chk_stock_order_book_market_status CHECK (CASE `market_status` WHEN 'OPEN' THEN 1 WHEN 'CLOSED' THEN 1 WHEN 'HALTED' THEN 1 WHEN 'CIRCUIT_BREAKER' THEN 1 ELSE 0 END = 1)",
     ])),
   ],
