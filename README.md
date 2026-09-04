@@ -252,4 +252,5 @@ npm run build
 - Documentation index: `AGENTS_DOCUMENTATION_INDEX.md`
 - Semo More feature guide: `semo-front-service/SEMO_MORE_FEATURE_GUIDE.md`
 - Muse operational note: `muse-back-service/AGENTS_MUSE_CONTEST_UNIFIED.md`
-- ZeroQ seat sensor hardware note: `zeroq-back-sensor/AGENTS_ZEROQ_SEAT_SENSOR_HARDWARE.md`
+- ZeroQ distance sensor hardware: `zeroq-back-sensor/ZEROQ_SPOT_SENSOR_HARDWARE.md`
+- ZeroQ BLE sensor protocol: `zeroq-sensor-gateway/ZEROQ_SENSOR_PROTOCOL.md`

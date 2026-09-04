@@ -64,6 +64,17 @@ cd sbng-front-service && npm install && npm run dev
 cd stock-front-service && npm install && npm run dev
 ```
 
+## ZeroQ BLE Spot Scanner
+
+```bash
+cd zeroq-sensor-gateway/tools/ble-seat-scanner
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m unittest discover -s tests -v
+python seat_ble_scanner.py
+```
+
 ## Frontend Quality
 
 ```bash

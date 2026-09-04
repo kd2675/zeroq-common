@@ -37,8 +37,8 @@
 | 경로 | 문서 |
 |---|---|
 | `zeroq-back-service/` | `README.md`, `HELP.md`, `AGENTS.md`, `AGENTS_ZEROQ_CURRENT_FLOW_ANALYSIS_REPORT.md`, `AGENTS_ZEROQ_DEVELOPMENT_ONLY.md` |
-| `zeroq-back-sensor/` | `README.md`, `HELP.md`, `AGENTS.md`, `AGENTS_ZEROQ_SEAT_SENSOR_HARDWARE.md`, `examples/zeroq-seat-sensor-xiao/README.md` |
-| `zeroq-sensor-gateway/` | `README.md`, `HELP.md`, `AGENTS.md`, `AGENTS_ZEROQ_SENSOR_PROTOCOL.md` |
+| `zeroq-back-sensor/` | `README.md`, `HELP.md`, `AGENTS.md`, `ZEROQ_SPOT_SENSOR_HARDWARE.md`, `examples/zeroq-spot-sensor-xiao-vl53l1x/README.md` |
+| `zeroq-sensor-gateway/` | `README.md`, `HELP.md`, `AGENTS.md`, `ZEROQ_SENSOR_PROTOCOL.md`, `tools/ble-seat-scanner/README.md` |
 | `zeroq-front-admin/` | `README.md`, `AGENTS.md` |
 | `zeroq-front-service/` | `README.md`, `AGENTS.md` |
 
